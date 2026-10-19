@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+from pathlib import Path
 
 
 def _not_implemented(command: str):
@@ -14,13 +16,38 @@ def _not_implemented(command: str):
     return handler
 
 
+def _build_dataset(args: argparse.Namespace) -> int:
+    from redpen.dataset import build_dataset
+
+    if not args.sweep_dir:
+        raise ValueError("--sweep-dir is required (or set REDPEN_SWEEP_DIR)")
+    out = Path(args.out)
+    report = build_dataset(args.sweep_dir, out, args.cache_dir, force=args.force)
+    if report.failures:
+        print(f"build failed: {len(report.failures)} of {report.total} cases failed; {out} not written")
+        return 1
+    print(f"built {len(report.built)} cases into {out}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="redpen", description="Benchmark AI code reviewers on real CVEs."
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
+    bd = sub.add_parser(
+        "build-dataset", help="build a dataset version from the cve-variant-sweep corpus"
+    )
+    bd.add_argument("--sweep-dir", default=os.environ.get("REDPEN_SWEEP_DIR"))
+    bd.add_argument("--out", default="dataset/v1")
+    bd.add_argument(
+        "--cache-dir",
+        default=os.environ.get("REDPEN_CACHE_DIR")
+        or str(Path.home() / ".cache" / "redpen" / "repos"),
+    )
+    bd.add_argument("--force", action="store_true")
+    bd.set_defaults(handler=_build_dataset)
     for name, help_text in (
-        ("build-dataset", "build a dataset version from the cve-variant-sweep corpus"),
         ("run", "run reviewers and the judge over a dataset"),
         ("report", "render the leaderboard from completed runs"),
     ):
