@@ -1,0 +1,44 @@
+default_judge: mock
+reviewers:
+  mock:
+    adapter: mock
+    vuln: hit          # hit | partial | miss | empty | error
+    fixed: clean       # clean | fp | empty | error
+    overrides: {}      # {"<case_id>": {"vuln": "...", "fixed": "..."}}
+  reviewer-a:
+    adapter: openai_compat
+    base_url: CHANGE-ME
+    model: CHANGE-ME
+    api_key_env: REDPEN_REVIEWER_A_KEY
+    temperature: 0
+    max_tokens: 2048
+    max_tokens_param: max_tokens   # or max_completion_tokens
+    seed: 0
+    timeout_s: 120
+    max_retries: 2
+    retry_backoff_s: 1.0
+  reviewer-b:
+    adapter: openai_compat
+    base_url: CHANGE-ME
+    model: CHANGE-ME
+    api_key_env: REDPEN_REVIEWER_B_KEY
+    temperature: 0
+    max_tokens: 2048
+    max_tokens_param: max_tokens   # or max_completion_tokens
+    seed: 0
+    timeout_s: 120
+    max_retries: 2
+    retry_backoff_s: 1.0
+judges:
+  mock:
+    adapter: mock
+    malformed_cases: []   # case ids whose judge output is always invalid
+    repair_cases: []      # case ids whose first judge output is invalid, second valid
+  llm:
+    adapter: openai_compat
+    base_url: CHANGE-ME
+    model: CHANGE-ME
+    api_key_env: REDPEN_JUDGE_KEY
+    temperature: 0
+    max_tokens: 1024
+    structured_output: json_schema   # json_schema | json_object | prompt
