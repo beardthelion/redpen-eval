@@ -1,0 +1,85 @@
+rules:
+  - id: go-func
+    languages: [go]
+    severity: INFO
+    message: construct
+    pattern-either:
+      - pattern: |
+          func $F(...) { ... }
+      - pattern: |
+          func $F(...) $RET { ... }
+      - pattern: |
+          func ($R $T) $F(...) { ... }
+      - pattern: |
+          func ($R $T) $F(...) $RET { ... }
+
+  - id: py-def
+    languages: [python]
+    severity: INFO
+    message: construct
+    pattern-either:
+      - pattern: |
+          def $F(...): ...
+      - pattern: |
+          async def $F(...): ...
+
+  - id: py-class
+    languages: [python]
+    severity: INFO
+    message: construct
+    pattern: |
+      class $C: ...
+
+  - id: ts-class
+    languages: [typescript]
+    severity: INFO
+    message: construct
+    pattern: |
+      class $C { ... }
+
+  - id: ts-func
+    languages: [typescript]
+    severity: INFO
+    message: construct
+    pattern-either:
+      - pattern: |
+          function $F(...) { ... }
+      - pattern: |
+          const $F = (...) => { ... }
+      - pattern: |
+          let $F = (...) => { ... }
+      - pattern: |
+          var $F = (...) => { ... }
+      - pattern: |
+          const $F = function (...) { ... }
+      - pattern: |
+          let $F = function (...) { ... }
+      - pattern: |
+          var $F = function (...) { ... }
+
+  - id: js-class
+    languages: [javascript]
+    severity: INFO
+    message: construct
+    pattern: |
+      class $C { ... }
+
+  - id: js-func
+    languages: [javascript]
+    severity: INFO
+    message: construct
+    pattern-either:
+      - pattern: |
+          function $F(...) { ... }
+      - pattern: |
+          const $F = (...) => { ... }
+      - pattern: |
+          let $F = (...) => { ... }
+      - pattern: |
+          var $F = (...) => { ... }
+      - pattern: |
+          const $F = function (...) { ... }
+      - pattern: |
+          let $F = function (...) { ... }
+      - pattern: |
+          var $F = function (...) { ... }
