@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+docs/plans/
+docs/solutions/
+.remember/
+.compound-engineering/
+results/*
+!results/sample/
