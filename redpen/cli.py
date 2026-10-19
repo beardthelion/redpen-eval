@@ -30,6 +30,13 @@ def _build_dataset(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run(args: argparse.Namespace) -> int:
+    from redpen.runner import run
+
+    return run(args.reviewer, args.judge, args.cases, args.dataset, args.config,
+               args.results_dir, concurrency=args.concurrency, resume=args.resume)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="redpen", description="Benchmark AI code reviewers on real CVEs."
@@ -47,12 +54,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     bd.add_argument("--force", action="store_true")
     bd.set_defaults(handler=_build_dataset)
-    for name, help_text in (
-        ("run", "run reviewers and the judge over a dataset"),
-        ("report", "render the leaderboard from completed runs"),
-    ):
-        p = sub.add_parser(name, help=help_text)
-        p.set_defaults(handler=_not_implemented(name))
+    rn = sub.add_parser("run", help="run reviewers and the judge over a dataset")
+    rn.add_argument("--reviewer", required=True)
+    rn.add_argument("--judge")
+    rn.add_argument("--cases", help="all, a guard class, or comma-separated case ids (default all)")
+    rn.add_argument("--dataset", default="dataset/v1")
+    rn.add_argument("--config", default="reviewers.yaml")
+    rn.add_argument("--results-dir", default="results")
+    rn.add_argument("--concurrency", type=int, default=4)
+    rn.add_argument("--resume", metavar="RUN_ID")
+    rn.set_defaults(handler=_run)
+    rp = sub.add_parser("report", help="render the leaderboard from completed runs")
+    rp.set_defaults(handler=_not_implemented("report"))
     return parser
 
 
