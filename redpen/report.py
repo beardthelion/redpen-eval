@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import math
 import random
@@ -10,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from redpen.dataset import load_dataset
-from redpen.util import atomic_write_text
+from redpen.util import atomic_write_text, utc_now_iso
 
 COMPARED_FIELDS = (
     ("dataset", "version"), ("dataset", "case_set_sha256"), ("case_ids",),
@@ -269,10 +270,112 @@ def render_markdown(metrics: list[dict], meta: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+HTML_CSS = """
+:root { color-scheme: light dark; --bg: #ffffff; --fg: #1b1b1f; --muted: #5c5f66;
+  --line: #d9dce1; --panel: #f4f5f7; --bad: #b42318; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #15171a; --fg: #e6e7ea; --muted: #a0a4ab; --line: #33373d;
+    --panel: #1e2125; --bad: #f97066; }
+}
+body { background: var(--bg); color: var(--fg); margin: 0 auto; max-width: 1200px;
+  padding: 16px; font: 14px/1.45 system-ui, sans-serif; }
+p.meta { color: var(--muted); }
+table { border-collapse: collapse; margin: 8px 0 24px; display: block; overflow-x: auto; }
+th, td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left;
+  white-space: nowrap; }
+details { border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; padding: 4px 10px; }
+summary { cursor: pointer; font-family: ui-monospace, monospace; }
+.sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+pre { background: var(--panel); padding: 8px; overflow-x: auto; white-space: pre-wrap;
+  word-break: break-word; }
+.error { color: var(--bad); }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; }
+dt { color: var(--muted); }
+dd { margin: 0; }
+"""
+
+
+def _e(value) -> str:
+    return html.escape("" if value is None else str(value), quote=True)
+
+
+def _html_table(header: list[str], rows: list[list[str]]) -> str:
+    head = "".join(f"<th>{_e(h)}</th>" for h in header)
+    body = "".join("<tr>" + "".join(f"<td>{_e(c)}</td>" for c in r) + "</tr>" for r in rows)
+    return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
+
+
+def _dl(items: list[tuple[str, str]]) -> str:
+    return "<dl>" + "".join(f"<dt>{_e(k)}</dt><dd>{_e(v)}</dd>" for k, v in items) + "</dl>"
+
+
+def _side_html(title: str, side: dict) -> str:
+    parts = [f"<h4>{_e(title)}</h4>", _dl([("status", side["status"])])]
+    err = side.get("review_error")
+    if err:
+        cls = ' class="error"' if side["status"] == "reviewer_error" else ""
+        parts.append(f"<p{cls}>{_e(err['kind'])}: {_e(err['message'])}</p>")
+    if side.get("review_text") is not None:
+        parts.append(f"<pre>{_e(side['review_text'])}</pre>")
+    judge = side.get("judge")
+    if judge:
+        if judge.get("error"):
+            parts.append(f'<p class="error">{_e(side["status"])}: {_e(judge["error"])}</p>')
+        parsed = judge.get("parsed")
+        if parsed:
+            parts.append(f"<p>{_e(parsed.get('rationale'))}</p>")
+            parts.append(f"<pre>{_e(json.dumps(parsed, indent=2, sort_keys=True))}</pre>")
+    if "verdict" in side:
+        parts.append(_dl([("verdict", side["verdict"] or "-"),
+                          ("location match", side.get("location_match"))]))
+    else:
+        parts.append(_dl([("fixed clean", side.get("fixed_clean"))]))
+    return "<div>" + "".join(parts) + "</div>"
+
+
+def _case_html(rec: dict, case: dict) -> str:
+    spans = ", ".join(f"{s['start']}-{s['end']} ({s['source']})"
+                      for s in case["vuln"]["expected_spans"])
+    credit = rec["pair_credit"]
+    info = _dl([("guard class", rec["guard_class"]), ("repo", case["repo_url"]),
+                ("vulnerability", case["vuln_description"]), ("expected spans", spans),
+                ("pair credit", "-" if credit is None else f"{credit:.2f}")])
+    verdict = rec["vuln"].get("verdict") or rec["vuln"]["status"]
+    return (f"<details><summary>{_e(rec['case_id'])} {_e(verdict)}</summary>{info}"
+            f"<div class=\"sides\">{_side_html('vuln side', rec['vuln'])}"
+            f"{_side_html('fixed side', rec['fixed'])}</div></details>")
+
+
+def render_html(metrics: list[dict], runs: list[Run], classes: list[str],
+                cases: dict, generated_utc: str) -> str:
+    meta = runs[0].meta
+    p = meta["prompts"]
+    header = (f"Dataset {meta['dataset']['version']}, {len(meta['case_ids'])} cases, "
+              f"judge model {meta['judge'].get('model') or '-'} ({meta['judge']['name']}), "
+              f"prompts {p['review_version']} / {p['judge_version']}, "
+              f"formula {meta['scoring']['formula']}, generated {generated_utc}.")
+    by_id = {r.run_id: r for r in runs}
+    sections = []
+    for m in metrics:
+        run = by_id[m["run_id"]]
+        details = "".join(_case_html(rec, cases[rec["case_id"]]) for rec in run.cases)
+        sections.append(f"<h3>{_e(m['reviewer'])}</h3><p class=\"meta\">run {_e(m['run_id'])}</p>"
+                        f"{details}")
+    per_class = _html_table(["guard class", *(m["reviewer"] for m in metrics)],
+                            class_cells(metrics, classes))
+    return ("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+            f"<title>RedPen leaderboard</title><style>{HTML_CSS}</style></head><body>"
+            f"<h1>RedPen leaderboard</h1><p class=\"meta\">{_e(header)}</p>"
+            f"{_html_table(HEADER, [leaderboard_cells(m) for m in metrics])}"
+            f"<h2>Recall by guard class (HIT/n)</h2>{per_class}"
+            f"<h2>Per-case results</h2>{''.join(sections)}</body></html>\n")
+
+
 # ------------------------------------------------------------ entry point
 
 def report(results_dir, dataset_path, runs_arg: str | None = None,
-           markdown_path=None) -> int:
+           markdown_path=None, html_path=None) -> int:
     dataset = load_dataset(dataset_path)
     manifest = dataset.manifest
     run_ids = [r.strip() for r in runs_arg.split(",") if r.strip()] if runs_arg else None
@@ -290,4 +393,8 @@ def report(results_dir, dataset_path, runs_arg: str | None = None,
     if markdown_path:
         atomic_write_text(markdown_path, render_markdown(metrics, runs[0].meta))
         print(f"markdown: {markdown_path}")
+    if html_path:
+        cases = {c.case_id: c.data for c in dataset.cases}
+        atomic_write_text(html_path, render_html(metrics, runs, classes, cases, utc_now_iso()))
+        print(f"html: {html_path}")
     return 0
