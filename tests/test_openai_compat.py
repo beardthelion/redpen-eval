@@ -441,4 +441,4 @@ def test_must_not_key_prefix_leaks_when_echo_straddles_snippet_cut(key):
     with pytest.raises(ReviewerError) as err:
         chat_completion(entry(), [{"role": "user", "content": "hi"}], transport=server.transport)
     assert KEY[:6] not in err.value.message
-    assert "<redacted>" in err.value.message
+    assert "SECRET" not in err.value.message
