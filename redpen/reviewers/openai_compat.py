@@ -26,6 +26,11 @@ def _error(kind: str, message: str, key: str, status: int | None = None) -> Revi
     return ReviewerError(kind, message.replace(key, "<redacted>"), status=status)
 
 
+def _snippet(resp: httpx.Response, key: str) -> str:
+    # Redact before truncating, so a cut through an echoed key cannot leave a prefix.
+    return resp.text.replace(key, "<redacted>")[:BODY_SNIPPET]
+
+
 def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | None = None,
                     transport: httpx.BaseTransport | None = None) -> ChatResult:
     env = cfg["api_key_env"]
@@ -64,7 +69,7 @@ def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | 
                 retryable = status in RETRY_STATUSES or status >= 500
                 if not retryable or last:
                     kind = "rate_limit" if status == 429 else "http_error"
-                    raise _error(kind, f"HTTP {status}: {resp.text[:BODY_SNIPPET]}", key, status)
+                    raise _error(kind, f"HTTP {status}: {_snippet(resp, key)}", key, status)
             time.sleep(backoff * 2 ** attempt)
 
     try:
@@ -73,7 +78,7 @@ def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | 
         text = choice["message"].get("content") or ""
         finish = choice.get("finish_reason")
     except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-        raise _error("http_error", f"invalid response body: {resp.text[:BODY_SNIPPET]}", key) from None
+        raise _error("http_error", f"invalid response body: {_snippet(resp, key)}", key) from None
     if finish == "content_filter":
         raise ReviewerError("refusal", "finish_reason content_filter")
     meta = {"model": data.get("model"), "system_fingerprint": data.get("system_fingerprint"),

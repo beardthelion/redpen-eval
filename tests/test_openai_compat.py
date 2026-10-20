@@ -430,3 +430,15 @@ def test_must_not_secret_never_written_full_run(tmp_path, monkeypatch):
             rec = json.loads(p.read_text())
             statuses += [rec["vuln"]["status"], rec["fixed"]["status"]]
     assert sorted(statuses) == ["reviewer_error", "scored", "scored", "scored"]
+
+
+def test_must_not_key_prefix_leaks_when_echo_straddles_snippet_cut(key):
+    # The key is echoed so that the body snippet cut falls inside it: truncating
+    # before redacting would leave a key prefix in the error message.
+    from redpen.reviewers.openai_compat import BODY_SNIPPET
+    body = "x" * (BODY_SNIPPET - 6) + KEY + " was rejected"
+    server = Server((401, body))
+    with pytest.raises(ReviewerError) as err:
+        chat_completion(entry(), [{"role": "user", "content": "hi"}], transport=server.transport)
+    assert KEY[:6] not in err.value.message
+    assert "<redacted>" in err.value.message
