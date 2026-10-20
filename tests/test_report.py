@@ -224,8 +224,8 @@ def test_must_not_judge_errors_excluded_from_recall_n(env, capsys):
     assert cell(out, "mock", "pair [95% CI] (n)").endswith("(2)")
     assert cell(out, "mock", "H/P/M") == "2/0/0"
     assert cell(out, "mock", "errors (rev/judge)") == "0/2"
-    assert cell(out, "mock", "label") == "ERRORS"
-    assert cell(out, "mock", "rank") == "1"
+    assert cell(out, "mock", "label") == "UNRANKED"
+    assert cell(out, "mock", "rank") == "-"
 
 
 def test_must_not_empty_vuln_sides_count_as_miss(tmp_path, monkeypatch, capsys):
@@ -390,7 +390,7 @@ def test_incomplete_with_judge_errors_has_both_labels(env, capsys):
     make_incomplete(rd, IV)
     assert env.report("--runs", rd.name) == 0
     label = cell(capsys.readouterr().out, "mock", "label")
-    assert "INCOMPLETE" in label and "ERRORS" in label
+    assert "INCOMPLETE" in label and "UNRANKED" in label
 
 
 def test_default_selection_picks_newest_complete_run_per_reviewer(env, capsys):

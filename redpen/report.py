@@ -181,15 +181,20 @@ def run_metrics(run: Run, classes: list[str]) -> dict:
     }
 
 
+def _has_errors(m: dict) -> bool:
+    return bool(m["reviewer_errors"] or m["judge_errors"])
+
+
 def rank(metrics: list[dict]) -> list[dict]:
-    """Sort ranked rows by pair, recall, name; reviewer-error runs go below with rank '-'."""
+    """Sort ranked rows by pair, recall, name; runs with reviewer or judge errors go below
+    with rank '-', since their scores cover fewer cases than the rest."""
     def key(m):
         pair = m["pair"]["score"]
         recall = m["recall"]["k"] / m["recall"]["n"] if m["recall"]["n"] else -1.0
         return (-(pair if pair is not None else -1.0), -recall, m["reviewer"], m["run_id"])
 
-    ranked = sorted((m for m in metrics if not m["reviewer_errors"]), key=key)
-    unranked = sorted((m for m in metrics if m["reviewer_errors"]), key=key)
+    ranked = sorted((m for m in metrics if not _has_errors(m)), key=key)
+    unranked = sorted((m for m in metrics if _has_errors(m)), key=key)
     for i, m in enumerate(ranked, start=1):
         m["rank"] = str(i)
     for m in unranked:
@@ -221,10 +226,8 @@ def _label(m: dict) -> str:
     labels = []
     if not m["complete"]:
         labels.append("INCOMPLETE")
-    if m["reviewer_errors"]:
+    if _has_errors(m):
         labels.append("UNRANKED")
-    elif m["judge_errors"]:
-        labels.append("ERRORS")
     return " ".join(labels)
 
 
