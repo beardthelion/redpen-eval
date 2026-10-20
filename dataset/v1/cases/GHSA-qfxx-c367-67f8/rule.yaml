@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-qfxx-c367-67f8
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      Zip extraction creates a symlink without validating the symlink target
+      stays inside the destination directory. A malicious archive escapes
+      via a symlink Zip Slip (variant of GHSA-qfxx-c367-67f8 /
+      CVE-2026-103975).
+    metadata:
+      ghsa_id: GHSA-qfxx-c367-67f8
+      cve: CVE-2026-103975
+      ecosystem: npm
+      guard_class: symlink-toctou-check
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          private async extractEntry(...) {
+            ...
+          }
+      - pattern-not-regex: (?s)isContainedPath

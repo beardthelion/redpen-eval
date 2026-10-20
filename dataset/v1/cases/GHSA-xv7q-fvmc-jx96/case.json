@@ -1,0 +1,89 @@
+{
+  "case_id": "GHSA-xv7q-fvmc-jx96",
+  "copyright_notice": "Copyright 2018-present Vikunja and contributors. All rights reserved.",
+  "copyright_source": "sink_file",
+  "cve": "CVE-2026-62367",
+  "cve_published_at": "2026-10-09T20:49:06Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-07-19T18:59:34+02:00",
+  "fixed": {
+    "file": "fixed/openid.go",
+    "header_lines": 6,
+    "original_line_count": 661,
+    "segments": [
+      {
+        "end": 661,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "7854f2729ab72000210b61c25929678fd6901630",
+  "guard_class": "auth-check",
+  "language": "go",
+  "license_dir": "licenses/go-vikunja__vikunja",
+  "license_spdx": "AGPL-3.0",
+  "repo_url": "https://github.com/go-vikunja/vikunja",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "c75f3494b2afc3e6c908974ab44d33dacb10653f4c88fc1ba65ab47ea621da0d",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "pkg/modules/auth/openid/openid.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 391,
+        "source": "semgrep",
+        "start": 386
+      },
+      {
+        "end": 80,
+        "source": "fix_diff",
+        "start": 79
+      },
+      {
+        "end": 82,
+        "source": "fix_diff",
+        "start": 81
+      },
+      {
+        "end": 385,
+        "source": "fix_diff",
+        "start": 384
+      },
+      {
+        "end": 386,
+        "source": "fix_diff",
+        "start": 386
+      },
+      {
+        "end": 388,
+        "source": "fix_diff",
+        "start": 388
+      },
+      {
+        "end": 413,
+        "source": "fix_diff",
+        "start": 409
+      },
+      {
+        "end": 512,
+        "source": "fix_diff",
+        "start": 511
+      }
+    ],
+    "file": "vuln/openid.go",
+    "header_lines": 6,
+    "location_selectivity": 0.09262166405023547,
+    "original_line_count": 637,
+    "segments": [
+      {
+        "end": 637,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "Account linked on email fallback gated only by the provider flag, with no verified-email check. An unverified email claim can take over a local account (variant of GHSA-xv7q-fvmc-jx96 / CVE-2026-62367).",
+  "vuln_ref": "be36c11e67d6a3a10643b17a0bcbc33d09de836a",
+  "window_mode": "whole_file"
+}

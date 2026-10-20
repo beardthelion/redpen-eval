@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-xv7q-fvmc-jx96
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Account linked on email fallback gated only by the provider flag, with no
+      verified-email check. An unverified email claim can take over a local
+      account (variant of GHSA-xv7q-fvmc-jx96 / CVE-2026-62367).
+    metadata:
+      ghsa_id: GHSA-xv7q-fvmc-jx96
+      cve: CVE-2026-62367
+      ecosystem: go
+      guard_class: auth-check
+      engine: semgrep
+      date: "2026-10-14"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          if $P.EmailFallback {
+            ...
+            fallbackEmail = $C.Email
+            ...
+          }

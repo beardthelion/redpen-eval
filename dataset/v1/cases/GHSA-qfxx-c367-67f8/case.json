@@ -1,0 +1,109 @@
+{
+  "case_id": "GHSA-qfxx-c367-67f8",
+  "copyright_notice": "Copyright OpenJS Foundation and other contributors, https://openjsf.org/",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-103975",
+  "cve_published_at": "2026-10-15T20:18:56Z",
+  "ecosystem": "npm",
+  "fix_commit_date": "2026-06-27T07:59:04+02:00",
+  "fixed": {
+    "file": "fixed/zip.ts",
+    "header_lines": 5,
+    "original_line_count": 699,
+    "segments": [
+      {
+        "end": 699,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "d9eb36f413153e28b04b92d8ce4447da270371c0",
+  "guard_class": "symlink-toctou-check",
+  "language": "typescript",
+  "license_dir": "licenses/appium__appium",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/appium/appium",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "9b06e27680c3b4ae32e3fc60bb56bdfbf6563d667e67ef6abf4b8cf4d2877618",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "packages/support/lib/zip.ts",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 192,
+        "source": "semgrep",
+        "start": 154
+      },
+      {
+        "end": 13,
+        "source": "fix_diff",
+        "start": 13
+      },
+      {
+        "end": 137,
+        "source": "fix_diff",
+        "start": 136
+      },
+      {
+        "end": 142,
+        "source": "fix_diff",
+        "start": 141
+      },
+      {
+        "end": 154,
+        "source": "fix_diff",
+        "start": 154
+      },
+      {
+        "end": 160,
+        "source": "fix_diff",
+        "start": 160
+      },
+      {
+        "end": 180,
+        "source": "fix_diff",
+        "start": 176
+      },
+      {
+        "end": 188,
+        "source": "fix_diff",
+        "start": 187
+      },
+      {
+        "end": 190,
+        "source": "fix_diff",
+        "start": 189
+      },
+      {
+        "end": 194,
+        "source": "fix_diff",
+        "start": 193
+      },
+      {
+        "end": 273,
+        "source": "fix_diff",
+        "start": 273
+      },
+      {
+        "end": 610,
+        "source": "fix_diff",
+        "start": 609
+      }
+    ],
+    "file": "vuln/zip.ts",
+    "header_lines": 5,
+    "location_selectivity": 0.16558441558441558,
+    "original_line_count": 616,
+    "segments": [
+      {
+        "end": 616,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "Zip extraction creates a symlink without validating the symlink target stays inside the destination directory. A malicious archive escapes via a symlink Zip Slip (variant of GHSA-qfxx-c367-67f8 / CVE-2026-103975).",
+  "vuln_ref": "b483d82b1348470e38d3160452e4d0166ae33840",
+  "window_mode": "whole_file"
+}

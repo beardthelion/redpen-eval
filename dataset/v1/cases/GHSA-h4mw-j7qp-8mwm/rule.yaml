@@ -1,0 +1,24 @@
+rules:
+  - id: cve-variant-sweep-GHSA-h4mw-j7qp-8mwm
+    languages: [python]
+    severity: WARNING
+    message: >-
+      An optional-value CLI flag (--resume/--session-id) is passed as two
+      argv tokens. A dash-leading value is not bound to the flag and is
+      parsed as a separate CLI flag, letting untrusted input inject
+      arbitrary flags; pass it as a single --flag=value token instead
+      (variant of GHSA-h4mw-j7qp-8mwm).
+    metadata:
+      ghsa_id: GHSA-h4mw-j7qp-8mwm
+      cve: CVE-2026-96620
+      ecosystem: pip
+      guard_class: escaping-encoding
+      engine: semgrep
+      date: "2026-10-19"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-either:
+          - pattern: $CMD.extend(["--resume", $X])
+          - pattern: $CMD.extend(["--session-id", $X])
+      - pattern-not: $CMD.extend(["--resume", "..."])
+      - pattern-not: $CMD.extend(["--session-id", "..."])

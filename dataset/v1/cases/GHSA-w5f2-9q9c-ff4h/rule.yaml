@@ -1,0 +1,19 @@
+rules:
+  - id: cve-variant-sweep-GHSA-w5f2-9q9c-ff4h
+    languages: [python]
+    severity: WARNING
+    message: >-
+      pickle.loads is used to deserialize multiprocess/IPC wire bytes.
+      Attacker-controlled bytes reach code execution through pickle opcodes;
+      use a data-only wire format with an allowlist of permitted types
+      instead (variant of GHSA-w5f2-9q9c-ff4h / CVE-2026-105192).
+    metadata:
+      ghsa_id: GHSA-w5f2-9q9c-ff4h
+      cve: CVE-2026-105192
+      ecosystem: pip
+      guard_class: allowlist-denylist
+      engine: semgrep
+      date: "2026-10-19"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: pickle.loads($DATA)

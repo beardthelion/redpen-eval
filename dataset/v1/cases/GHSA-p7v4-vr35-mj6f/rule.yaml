@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-p7v4-vr35-mj6f
+    languages: [go]
+    severity: WARNING
+    message: >-
+      CRImportCheckpoint restores checkpoint data during CRI CreateContainer
+      without checking the restore gate. The destination security context
+      from the checkpoint is applied unchecked (variant of
+      GHSA-p7v4-vr35-mj6f / CVE-2026-95837).
+    metadata:
+      ghsa_id: GHSA-p7v4-vr35-mj6f
+      cve: CVE-2026-95837
+      ecosystem: go
+      guard_class: auth-check
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func (c *criService) CRImportCheckpoint(...) (...) {
+            ...
+          }
+      - pattern-not-regex: (?s)EnableExperimentalRestoreViaCreate

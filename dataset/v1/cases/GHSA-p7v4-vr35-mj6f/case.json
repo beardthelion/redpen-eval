@@ -1,0 +1,59 @@
+{
+  "case_id": "GHSA-p7v4-vr35-mj6f",
+  "copyright_notice": "Copyright The containerd Authors.",
+  "copyright_source": "sink_file",
+  "cve": "CVE-2026-95837",
+  "cve_published_at": "2026-10-15T20:21:57Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-08-06T23:55:13-07:00",
+  "fixed": {
+    "file": "fixed/container_checkpoint_linux.go",
+    "header_lines": 5,
+    "original_line_count": 918,
+    "segments": [
+      {
+        "end": 599,
+        "start": 240
+      }
+    ]
+  },
+  "fixed_ref": "928c03c6898cad95f795300281fdff0dbc55a32f",
+  "guard_class": "auth-check",
+  "language": "go",
+  "license_dir": "licenses/containerd__containerd",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/containerd/containerd",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "3ab1a361b053a50eabbcbad73d7e948f670e46387e4da634a081b2c25b65abc3",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "internal/cri/server/container_checkpoint_linux.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 596,
+        "source": "semgrep",
+        "start": 240
+      },
+      {
+        "end": 246,
+        "source": "fix_diff",
+        "start": 245
+      }
+    ],
+    "file": "vuln/container_checkpoint_linux.go",
+    "header_lines": 5,
+    "location_selectivity": 1.0,
+    "original_line_count": 915,
+    "segments": [
+      {
+        "end": 596,
+        "start": 240
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "CRImportCheckpoint restores checkpoint data during CRI CreateContainer without checking the restore gate. The destination security context from the checkpoint is applied unchecked (variant of GHSA-p7v4-vr35-mj6f / CVE-2026-95837).",
+  "vuln_ref": "2cb32f0885e743db97713f7edac41c5065206557",
+  "window_mode": "trimmed"
+}

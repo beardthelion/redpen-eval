@@ -1,0 +1,189 @@
+{
+  "case_id": "GHSA-24cc-9352-h2pg",
+  "copyright_notice": "Copyright (c) 2014-2026 Tom Wallroth, Mat (mathiascode), et al.",
+  "copyright_source": "sink_file",
+  "cve": "CVE-2026-104266",
+  "cve_published_at": "2026-10-15T20:16:47Z",
+  "ecosystem": "pip",
+  "fix_commit_date": "2026-07-21T21:14:41+03:00",
+  "fixed": {
+    "file": "fixed/tinytag.py",
+    "header_lines": 5,
+    "original_line_count": 2376,
+    "segments": [
+      {
+        "end": 874,
+        "start": 480
+      }
+    ]
+  },
+  "fixed_ref": "9ada221ba44990cb02cd9002d992186e037b515e",
+  "guard_class": "type-range-check",
+  "language": "python",
+  "license_dir": "licenses/tinytag__tinytag",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/tinytag/tinytag",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "84934cfb519b664c9766a9d63b5ba07542339b2985d7cbd211983d3597b7213e",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "tinytag/tinytag.py",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 622,
+        "source": "semgrep",
+        "start": 622
+      },
+      {
+        "end": 606,
+        "source": "fix_diff",
+        "start": 605
+      },
+      {
+        "end": 609,
+        "source": "fix_diff",
+        "start": 608
+      },
+      {
+        "end": 612,
+        "source": "fix_diff",
+        "start": 610
+      },
+      {
+        "end": 614,
+        "source": "fix_diff",
+        "start": 614
+      },
+      {
+        "end": 618,
+        "source": "fix_diff",
+        "start": 618
+      },
+      {
+        "end": 623,
+        "source": "fix_diff",
+        "start": 621
+      },
+      {
+        "end": 633,
+        "source": "fix_diff",
+        "start": 626
+      },
+      {
+        "end": 644,
+        "source": "fix_diff",
+        "start": 636
+      },
+      {
+        "end": 649,
+        "source": "fix_diff",
+        "start": 647
+      },
+      {
+        "end": 652,
+        "source": "fix_diff",
+        "start": 652
+      },
+      {
+        "end": 668,
+        "source": "fix_diff",
+        "start": 668
+      },
+      {
+        "end": 673,
+        "source": "fix_diff",
+        "start": 672
+      },
+      {
+        "end": 676,
+        "source": "fix_diff",
+        "start": 676
+      },
+      {
+        "end": 679,
+        "source": "fix_diff",
+        "start": 679
+      },
+      {
+        "end": 683,
+        "source": "fix_diff",
+        "start": 681
+      },
+      {
+        "end": 691,
+        "source": "fix_diff",
+        "start": 689
+      },
+      {
+        "end": 708,
+        "source": "fix_diff",
+        "start": 707
+      },
+      {
+        "end": 716,
+        "source": "fix_diff",
+        "start": 716
+      },
+      {
+        "end": 718,
+        "source": "fix_diff",
+        "start": 718
+      },
+      {
+        "end": 726,
+        "source": "fix_diff",
+        "start": 725
+      },
+      {
+        "end": 728,
+        "source": "fix_diff",
+        "start": 728
+      },
+      {
+        "end": 738,
+        "source": "fix_diff",
+        "start": 738
+      },
+      {
+        "end": 744,
+        "source": "fix_diff",
+        "start": 741
+      },
+      {
+        "end": 760,
+        "source": "fix_diff",
+        "start": 760
+      },
+      {
+        "end": 765,
+        "source": "fix_diff",
+        "start": 765
+      },
+      {
+        "end": 767,
+        "source": "fix_diff",
+        "start": 767
+      },
+      {
+        "end": 771,
+        "source": "fix_diff",
+        "start": 771
+      }
+    ],
+    "file": "vuln/tinytag.py",
+    "header_lines": 5,
+    "location_selectivity": 0.4366576819407008,
+    "original_line_count": 2352,
+    "segments": [
+      {
+        "end": 850,
+        "start": 480
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "_traverse_atoms parses MP4 atom sizes with unpack_from and never validates them against the header length. A crafted invalid atom size sends the parser into an infinite loop (variant of GHSA-24cc-9352-h2pg / CVE-2026-104266).",
+  "vuln_ref": "39e5d0e5463abac597b3292feb9c2e409eee1e34",
+  "window_mode": "trimmed"
+}

@@ -1,0 +1,186 @@
+{
+  "case_id": "GHSA-fmxq-cgp8-87wp",
+  "copyright_notice": "Copyright 2017-2018 The Argo Authors",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-77459",
+  "cve_published_at": "2026-10-15T20:19:31Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-10-06T15:36:16-04:00",
+  "fixed": {
+    "file": "fixed/hook.go",
+    "header_lines": 5,
+    "original_line_count": 352,
+    "segments": [
+      {
+        "end": 18,
+        "start": 10
+      },
+      {
+        "end": 258,
+        "start": 97
+      },
+      {
+        "end": 334,
+        "start": 261
+      },
+      {
+        "end": 340,
+        "start": 338
+      },
+      {
+        "end": 348,
+        "start": 346
+      }
+    ]
+  },
+  "fixed_ref": "1149cdc6e932208c4402183cc3d7b7485239940c",
+  "guard_class": "auth-check",
+  "language": "go",
+  "license_dir": "licenses/argoproj__argo-cd",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/argoproj/argo-cd",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "58b409414ba05ab33c2a5b24327c879cc09923c79a6c0097dcb5eb7f31bdf5a4",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "controller/hook.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 223,
+        "source": "semgrep",
+        "start": 96
+      },
+      {
+        "end": 14,
+        "source": "fix_diff",
+        "start": 13
+      },
+      {
+        "end": 96,
+        "source": "fix_diff",
+        "start": 96
+      },
+      {
+        "end": 117,
+        "source": "fix_diff",
+        "start": 116
+      },
+      {
+        "end": 130,
+        "source": "fix_diff",
+        "start": 129
+      },
+      {
+        "end": 133,
+        "source": "fix_diff",
+        "start": 133
+      },
+      {
+        "end": 136,
+        "source": "fix_diff",
+        "start": 136
+      },
+      {
+        "end": 140,
+        "source": "fix_diff",
+        "start": 139
+      },
+      {
+        "end": 142,
+        "source": "fix_diff",
+        "start": 141
+      },
+      {
+        "end": 157,
+        "source": "fix_diff",
+        "start": 156
+      },
+      {
+        "end": 159,
+        "source": "fix_diff",
+        "start": 158
+      },
+      {
+        "end": 179,
+        "source": "fix_diff",
+        "start": 179
+      },
+      {
+        "end": 196,
+        "source": "fix_diff",
+        "start": 195
+      },
+      {
+        "end": 198,
+        "source": "fix_diff",
+        "start": 197
+      },
+      {
+        "end": 200,
+        "source": "fix_diff",
+        "start": 199
+      },
+      {
+        "end": 202,
+        "source": "fix_diff",
+        "start": 201
+      },
+      {
+        "end": 210,
+        "source": "fix_diff",
+        "start": 210
+      },
+      {
+        "end": 257,
+        "source": "fix_diff",
+        "start": 256
+      },
+      {
+        "end": 283,
+        "source": "fix_diff",
+        "start": 283
+      },
+      {
+        "end": 300,
+        "source": "fix_diff",
+        "start": 299
+      },
+      {
+        "end": 308,
+        "source": "fix_diff",
+        "start": 307
+      }
+    ],
+    "file": "vuln/hook.go",
+    "header_lines": 5,
+    "location_selectivity": 0.8018867924528302,
+    "original_line_count": 313,
+    "segments": [
+      {
+        "end": 17,
+        "start": 10
+      },
+      {
+        "end": 223,
+        "start": 96
+      },
+      {
+        "end": 295,
+        "start": 226
+      },
+      {
+        "end": 301,
+        "start": 299
+      },
+      {
+        "end": 309,
+        "start": 307
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "executeHooks creates PreDelete/PostDelete hook resources without enforcing AppProject destination-namespace and group/kind restrictions. A tenant with Git write access can escape their project boundary (variant of GHSA-fmxq-cgp8-87wp / CVE-2026-77459).",
+  "vuln_ref": "3abe9eb1d7a1fc62b07231c1de811cd59fa10579",
+  "window_mode": "trimmed"
+}

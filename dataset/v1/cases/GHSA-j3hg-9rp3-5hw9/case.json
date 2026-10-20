@@ -1,0 +1,92 @@
+{
+  "case_id": "GHSA-j3hg-9rp3-5hw9",
+  "copyright_notice": "Copyright the 0xJacky/nginx-ui contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-107805",
+  "cve_published_at": "2026-10-09T20:57:08Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-09-01T12:34:36+08:00",
+  "fixed": {
+    "file": "fixed/body.go",
+    "header_lines": 6,
+    "original_line_count": 103,
+    "segments": [
+      {
+        "end": 23,
+        "start": 2
+      },
+      {
+        "end": 103,
+        "start": 36
+      }
+    ]
+  },
+  "fixed_ref": "8c9b9a1aff218ee6c980d047b750e49da3c46796",
+  "guard_class": "size-cap",
+  "language": "go",
+  "license_dir": "licenses/0xJacky__nginx-ui",
+  "license_spdx": "AGPL-3.0",
+  "repo_url": "https://github.com/0xJacky/nginx-ui",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "2cd04ab33ae679c4eb1d0c891d85d1910737e4908082f0242fb89a194a2d1c5a",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "internal/nodeauth/body.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 46,
+        "source": "semgrep",
+        "start": 46
+      },
+      {
+        "end": 6,
+        "source": "fix_diff",
+        "start": 5
+      },
+      {
+        "end": 13,
+        "source": "fix_diff",
+        "start": 12
+      },
+      {
+        "end": 31,
+        "source": "fix_diff",
+        "start": 30
+      },
+      {
+        "end": 35,
+        "source": "fix_diff",
+        "start": 34
+      },
+      {
+        "end": 46,
+        "source": "fix_diff",
+        "start": 46
+      },
+      {
+        "end": 70,
+        "source": "fix_diff",
+        "start": 69
+      }
+    ],
+    "file": "vuln/body.go",
+    "header_lines": 6,
+    "location_selectivity": 0.7931034482758621,
+    "original_line_count": 72,
+    "segments": [
+      {
+        "end": 16,
+        "start": 2
+      },
+      {
+        "end": 72,
+        "start": 30
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "Inbound request body copied without a size limit. Bound it with io.LimitReader or http.MaxBytesReader (variant of GHSA-j3hg-9rp3-5hw9 / CVE-2026-107805).",
+  "vuln_ref": "1218a417ae9dfd3d053a7dce7d626ca9b8895361",
+  "window_mode": "trimmed"
+}

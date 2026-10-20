@@ -1,0 +1,74 @@
+{
+  "case_id": "GHSA-23vg-4cjm-66q5",
+  "copyright_notice": "Copyright (c) 2017-2018 the project authors.",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-100351",
+  "cve_published_at": "2026-10-15T20:19:20Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-08-18T16:12:06+02:00",
+  "fixed": {
+    "file": "fixed/validation_handler.go",
+    "header_lines": 5,
+    "original_line_count": 144,
+    "segments": [
+      {
+        "end": 144,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "eda80e2676e9f577ceed2dd80e64f16083edb041",
+  "guard_class": "input-validation",
+  "language": "go",
+  "license_dir": "licenses/getkin__kin-openapi",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "599b779eb8ee671c4e378dc4b3e2ce2f257cb54839c2d50e47ca8523f2e36009",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "openapi3filter/validation_handler.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 105,
+        "source": "semgrep",
+        "start": 82
+      },
+      {
+        "end": 6,
+        "source": "fix_diff",
+        "start": 5
+      },
+      {
+        "end": 82,
+        "source": "fix_diff",
+        "start": 81
+      },
+      {
+        "end": 89,
+        "source": "fix_diff",
+        "start": 88
+      },
+      {
+        "end": 106,
+        "source": "fix_diff",
+        "start": 105
+      }
+    ],
+    "file": "vuln/validation_handler.go",
+    "header_lines": 5,
+    "location_selectivity": 0.3904761904761905,
+    "original_line_count": 105,
+    "segments": [
+      {
+        "end": 105,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "validateRequest validates the decoded request path without checking for encoded path separators that resolve to a different operation. Security requirements of the validated operation may not match the operation actually served (variant of GHSA-23vg-4cjm-66q5 / CVE-2026-100351).",
+  "vuln_ref": "435c5db68d177dc136c98849a3783bf79087b27e",
+  "window_mode": "whole_file"
+}

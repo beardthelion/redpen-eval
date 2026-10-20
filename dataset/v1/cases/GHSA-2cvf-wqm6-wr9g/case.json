@@ -1,0 +1,59 @@
+{
+  "case_id": "GHSA-2cvf-wqm6-wr9g",
+  "copyright_notice": "Copyright the podman-container-tools/podman contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-94603",
+  "cve_published_at": "2026-10-15T20:22:16Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-09-29T08:40:53-04:00",
+  "fixed": {
+    "file": "fixed/container_create.go",
+    "header_lines": 5,
+    "original_line_count": 766,
+    "segments": [
+      {
+        "end": 324,
+        "start": 33
+      }
+    ]
+  },
+  "fixed_ref": "24706290d5c974f078d8ca284026802515f28e92",
+  "guard_class": "allowlist-denylist",
+  "language": "go",
+  "license_dir": "licenses/podman-container-tools__podman",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/podman-container-tools/podman",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "9d758c9a68442353f0941c70a53aaa2575dd1112d45387103893c4ab1e0f54e5",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "pkg/specgen/generate/container_create.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 314,
+        "source": "semgrep",
+        "start": 33
+      },
+      {
+        "end": 167,
+        "source": "fix_diff",
+        "start": 166
+      }
+    ],
+    "file": "vuln/container_create.go",
+    "header_lines": 5,
+    "location_selectivity": 1.0,
+    "original_line_count": 756,
+    "segments": [
+      {
+        "end": 314,
+        "start": 33
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "MakeContainer builds a container without first rejecting images that carry the checkpoint annotation. A checkpoint image started via `podman run` disables almost all sandboxing (variant of GHSA-2cvf-wqm6-wr9g / CVE-2026-94603).",
+  "vuln_ref": "7728ba0a90094408ad9078e36c3622a651d49616",
+  "window_mode": "trimmed"
+}

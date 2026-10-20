@@ -1,0 +1,21 @@
+rules:
+  - id: cve-variant-sweep-GHSA-x586-xvc8-g7q6
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      ResourceSerializer fills a deserialized resource value into a promise
+      without checking for thenables. An attacker-supplied thenable has its
+      `then` invoked during resume, crashing or hijacking the server
+      (variant of GHSA-x586-xvc8-g7q6 / CVE-2026-84994).
+    metadata:
+      ghsa_id: GHSA-x586-xvc8-g7q6
+      cve: CVE-2026-84994
+      ecosystem: npm
+      guard_class: type-range-check
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          resource._resolved = getObject(resource._resolved);
+          resource.value = Promise.resolve(resource._resolved);

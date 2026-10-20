@@ -1,0 +1,36 @@
+rules:
+  - id: cve-variant-sweep-GHSA-j3hg-9rp3-5hw9
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Inbound request body copied without a size limit. Bound it with
+      io.LimitReader or http.MaxBytesReader (variant of GHSA-j3hg-9rp3-5hw9 /
+      CVE-2026-107805).
+    metadata:
+      ghsa_id: GHSA-j3hg-9rp3-5hw9
+      cve: CVE-2026-107805
+      ecosystem: go
+      guard_class: size-cap
+      engine: semgrep
+      date: "2026-10-15"
+      author: cve-variant-sweep
+      note: request-side only; response bodies and io.Discard drains excluded
+    patterns:
+      - pattern-either:
+          - pattern: 'io.Copy($DST, ($R : *http.Request).Body)'
+          - pattern: io.Copy($DST, $C.Request.Body)
+          - pattern: io.Copy($DST, $C.Request().Body)
+          - pattern: io.Copy($DST, $C.Req.Body)
+          - patterns:
+              - pattern: io.Copy($DST, $R.Body)
+              - metavariable-regex:
+                  metavariable: $R
+                  regex: ^(r|req|request|httpReq|httpRequest|inReq)$
+      - pattern-not: io.Copy(io.Discard, ...)
+      - pattern-not: io.Copy(ioutil.Discard, ...)
+      - pattern-not-inside: |
+          $B = http.MaxBytesReader(...)
+          ...
+      - pattern-not-inside: |
+          $B = io.LimitReader(...)
+          ...

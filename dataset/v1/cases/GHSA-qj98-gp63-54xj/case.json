@@ -1,0 +1,97 @@
+{
+  "case_id": "GHSA-qj98-gp63-54xj",
+  "copyright_notice": "Copyright the dgraph-io/dgraph contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-102748",
+  "cve_published_at": "2026-10-15T20:17:22Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-07-23T17:53:02-04:00",
+  "fixed": {
+    "file": "fixed/run.go",
+    "header_lines": 5,
+    "original_line_count": 396,
+    "segments": [
+      {
+        "end": 136,
+        "start": 57
+      },
+      {
+        "end": 396,
+        "start": 212
+      }
+    ]
+  },
+  "fixed_ref": "c32f6041387fa631dbc057e265b71aec3384ead1",
+  "guard_class": "auth-check",
+  "language": "go",
+  "license_dir": "licenses/dgraph-io__dgraph",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/dgraph-io/dgraph",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "f0c1c84964f9afd571d04a9dc0ce10dcff30ecbb3a2bac17a6955d82e9b99bd2",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "dgraph/cmd/zero/run.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 298,
+        "source": "semgrep",
+        "start": 298
+      },
+      {
+        "end": 299,
+        "source": "semgrep",
+        "start": 299
+      },
+      {
+        "end": 300,
+        "source": "semgrep",
+        "start": 300
+      },
+      {
+        "end": 301,
+        "source": "semgrep",
+        "start": 301
+      },
+      {
+        "end": 110,
+        "source": "fix_diff",
+        "start": 109
+      },
+      {
+        "end": 235,
+        "source": "fix_diff",
+        "start": 234
+      },
+      {
+        "end": 296,
+        "source": "fix_diff",
+        "start": 296
+      },
+      {
+        "end": 301,
+        "source": "fix_diff",
+        "start": 298
+      }
+    ],
+    "file": "vuln/run.go",
+    "header_lines": 5,
+    "location_selectivity": 0.16736401673640167,
+    "original_line_count": 370,
+    "segments": [
+      {
+        "end": 125,
+        "start": 57
+      },
+      {
+        "end": 370,
+        "start": 201
+      }
+    ],
+    "semgrep_match_count": 4
+  },
+  "vuln_description": "Zero admin HTTP endpoints are registered with HandleFunc and no authentication middleware. Any caller able to reach the HTTP port can invoke destructive control-plane operations such as removeNode (variant of GHSA-qj98-gp63-54xj / CVE-2026-102748).",
+  "vuln_ref": "4caa27578667a8171e1bdfca4332fa7cb433065a",
+  "window_mode": "trimmed"
+}

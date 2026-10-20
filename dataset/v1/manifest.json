@@ -1,0 +1,711 @@
+{
+  "built_utc": "2026-10-20T01:15:57Z",
+  "case_count": 25,
+  "case_set_sha256": "11707061da2024ec4106bfad3ce4c7323e6e803c411c423e1aafe2f89db123f4",
+  "cases": [
+    {
+      "case_id": "GHSA-23vg-4cjm-66q5",
+      "case_sha256": "410dad94be1311b9b82cd9de863d822716564014345541e81218020e8c5ccf54",
+      "ecosystem": "go",
+      "fixed_ref": "eda80e2676e9f577ceed2dd80e64f16083edb041",
+      "fixed_segments": [
+        {
+          "end": 144,
+          "start": 1
+        }
+      ],
+      "guard_class": "input-validation",
+      "language": "go",
+      "license_spdx": "MIT",
+      "rule_sha256": "599b779eb8ee671c4e378dc4b3e2ce2f257cb54839c2d50e47ca8523f2e36009",
+      "vuln_ref": "435c5db68d177dc136c98849a3783bf79087b27e",
+      "vuln_segments": [
+        {
+          "end": 105,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-24cc-9352-h2pg",
+      "case_sha256": "6c25572a3b9600d28dfc7f3502b4bd642851b37cd7baaaf11b760eb22f54f010",
+      "ecosystem": "pip",
+      "fixed_ref": "9ada221ba44990cb02cd9002d992186e037b515e",
+      "fixed_segments": [
+        {
+          "end": 874,
+          "start": 480
+        }
+      ],
+      "guard_class": "type-range-check",
+      "language": "python",
+      "license_spdx": "MIT",
+      "rule_sha256": "84934cfb519b664c9766a9d63b5ba07542339b2985d7cbd211983d3597b7213e",
+      "vuln_ref": "39e5d0e5463abac597b3292feb9c2e409eee1e34",
+      "vuln_segments": [
+        {
+          "end": 850,
+          "start": 480
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-2cvf-wqm6-wr9g",
+      "case_sha256": "e26b7eb53c94fa51dac7429086a58777e7fbc8486211cad676efb3daf9e7784b",
+      "ecosystem": "go",
+      "fixed_ref": "24706290d5c974f078d8ca284026802515f28e92",
+      "fixed_segments": [
+        {
+          "end": 324,
+          "start": 33
+        }
+      ],
+      "guard_class": "allowlist-denylist",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "9d758c9a68442353f0941c70a53aaa2575dd1112d45387103893c4ab1e0f54e5",
+      "vuln_ref": "7728ba0a90094408ad9078e36c3622a651d49616",
+      "vuln_segments": [
+        {
+          "end": 314,
+          "start": 33
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-47c3-hpmg-7j6p",
+      "case_sha256": "ae29a40a2dc410d3ed1ad0e51c822b2f159d771a37df6c440f6cd371223de091",
+      "ecosystem": "pip",
+      "fixed_ref": "1d8ecb46cbc9621b7dc8812111d26692e086b376",
+      "fixed_segments": [
+        {
+          "end": 30,
+          "start": 1
+        }
+      ],
+      "guard_class": "input-validation",
+      "language": "python",
+      "license_spdx": "MIT",
+      "rule_sha256": "f3396025cd8dd9360465c294bd65cac8e9c0c00a011c869bef2ed4d93a098d52",
+      "vuln_ref": "48b4faa0d651476afa84d6423d57503b60716902",
+      "vuln_segments": [
+        {
+          "end": 12,
+          "start": 1
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-637c-6jxx-4rwm",
+      "case_sha256": "6f5fe55a1f129961ca98faf0e3cd384bc07832fb3167c96467bdcbe9fb0c75a7",
+      "ecosystem": "go",
+      "fixed_ref": "1e21cc798dedd079e696cdb45388eddc5e18365d",
+      "fixed_segments": [
+        {
+          "end": 27,
+          "start": 19
+        },
+        {
+          "end": 39,
+          "start": 31
+        },
+        {
+          "end": 241,
+          "start": 58
+        }
+      ],
+      "guard_class": "allowlist-denylist",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "c161b98321470602448e90e4117a5784e88cb827c14034738c4a1b265c202a74",
+      "vuln_ref": "2963aa3d3ba073a01f56865a557563ba40a2174c",
+      "vuln_segments": [
+        {
+          "end": 26,
+          "start": 19
+        },
+        {
+          "end": 36,
+          "start": 30
+        },
+        {
+          "end": 94,
+          "start": 55
+        },
+        {
+          "end": 157,
+          "start": 97
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-685w-q87j-wqw3",
+      "case_sha256": "c73b7708030db29a4b18d3a6b87ecc51b26f26828f78652bb0c32e9e2dd161c2",
+      "ecosystem": "go",
+      "fixed_ref": "8f91c26c8888a95a36c2357a6e30bc15d4dd76d3",
+      "fixed_segments": [
+        {
+          "end": 623,
+          "start": 510
+        }
+      ],
+      "guard_class": "input-validation",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "d660c3938b6db8bdeadf27553be0556a7f4af2ac7b56690d58a8240a1f80b097",
+      "vuln_ref": "39d5bf77773818e2e38e0bd87f8ff75d4be740f1",
+      "vuln_segments": [
+        {
+          "end": 597,
+          "start": 510
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-74vm-87hj-r66f",
+      "case_sha256": "c843933096eecf64a7c59d46079ac907b095e3daea03d82b086855d87e23d364",
+      "ecosystem": "go",
+      "fixed_ref": "f5441d67f855ed34d975b3b85665764644ab1459",
+      "fixed_segments": [
+        {
+          "end": 367,
+          "start": 270
+        }
+      ],
+      "guard_class": "input-validation",
+      "language": "go",
+      "license_spdx": "MIT",
+      "rule_sha256": "bcdd97e543e195f494224f8af2717b6851a480b63a95001969b758654327f11b",
+      "vuln_ref": "d090e36b2f1c42c898ba2a687a8f6e25f5ca727f",
+      "vuln_segments": [
+        {
+          "end": 363,
+          "start": 270
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-c42q-qvc3-j6vg",
+      "case_sha256": "0f9688801610adffda74a67e8127389956040e24d849e6351f038db061a53595",
+      "ecosystem": "npm",
+      "fixed_ref": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+      "fixed_segments": [
+        {
+          "end": 180,
+          "start": 1
+        }
+      ],
+      "guard_class": "escaping-encoding",
+      "language": "javascript",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "a1155b5881d4d7485c7e85e86867b6ba5e732ae5fb42b4ab4909638bd95b1817",
+      "vuln_ref": "60db64bf3e80550fcaf6f9c4ec79c19191c1702c",
+      "vuln_segments": [
+        {
+          "end": 179,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-cv23-7vc5-jfh7",
+      "case_sha256": "d229357940cea939f0d925e0424af70df236afb0a9f3bbbce19b4ac09b101ed6",
+      "ecosystem": "go",
+      "fixed_ref": "61af6e1e69710c5ca13cfbaaaa1bc11bc763a8a9",
+      "fixed_segments": [
+        {
+          "end": 817,
+          "start": 785
+        }
+      ],
+      "guard_class": "type-range-check",
+      "language": "go",
+      "license_spdx": "BSD-2-Clause",
+      "rule_sha256": "68c6ee337bc4cdf8cc1de972a17c5cd2b38fa1d18cca3c1f95dd85331a0d1fa5",
+      "vuln_ref": "e08cff860f76ff942dae8866ad88e4a3eca5ce8a",
+      "vuln_segments": [
+        {
+          "end": 812,
+          "start": 785
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-fmxq-cgp8-87wp",
+      "case_sha256": "1824c98667398a6ae1b26b05776153f3b7c6e0bcde53b1fb732eef628d834fb1",
+      "ecosystem": "go",
+      "fixed_ref": "1149cdc6e932208c4402183cc3d7b7485239940c",
+      "fixed_segments": [
+        {
+          "end": 18,
+          "start": 10
+        },
+        {
+          "end": 258,
+          "start": 97
+        },
+        {
+          "end": 334,
+          "start": 261
+        },
+        {
+          "end": 340,
+          "start": 338
+        },
+        {
+          "end": 348,
+          "start": 346
+        }
+      ],
+      "guard_class": "auth-check",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "58b409414ba05ab33c2a5b24327c879cc09923c79a6c0097dcb5eb7f31bdf5a4",
+      "vuln_ref": "3abe9eb1d7a1fc62b07231c1de811cd59fa10579",
+      "vuln_segments": [
+        {
+          "end": 17,
+          "start": 10
+        },
+        {
+          "end": 223,
+          "start": 96
+        },
+        {
+          "end": 295,
+          "start": 226
+        },
+        {
+          "end": 301,
+          "start": 299
+        },
+        {
+          "end": 309,
+          "start": 307
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-g8cf-rcjf-c8cf",
+      "case_sha256": "2072fa9096c525c7c14d6142fbd8b27885ec96aa875ea06a9e8bb8f22c689759",
+      "ecosystem": "go",
+      "fixed_ref": "9245cef66c840e27a08409a8a5cd0ee930c5bcff",
+      "fixed_segments": [
+        {
+          "end": 1762,
+          "start": 1
+        }
+      ],
+      "guard_class": "size-cap",
+      "language": "go",
+      "license_spdx": "MIT",
+      "rule_sha256": "2832d234811f06c3267409a56b6258a06d55d986fe32c72ad28e3c0d745df5cc",
+      "vuln_ref": "4487f198ab8be0c37d6ca72c54f5dca4dc25270e",
+      "vuln_segments": [
+        {
+          "end": 1752,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-h4mw-j7qp-8mwm",
+      "case_sha256": "90f8673e95ebba384e315497085eca8e14f87ae2c17dc965276cec008b657bbb",
+      "ecosystem": "pip",
+      "fixed_ref": "347a1cb88d7652199399db1b7f914e0a459a6662",
+      "fixed_segments": [
+        {
+          "end": 476,
+          "start": 282
+        }
+      ],
+      "guard_class": "escaping-encoding",
+      "language": "python",
+      "license_spdx": "MIT",
+      "rule_sha256": "4e0a86e72897a3cc4e76c4a4ed4b6ff14803799264ecd4a8c7a831d423beb0cf",
+      "vuln_ref": "af69c0125eb48978631c671d877d0a3c246d210d",
+      "vuln_segments": [
+        {
+          "end": 471,
+          "start": 282
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-j3hg-9rp3-5hw9",
+      "case_sha256": "c483d300dd7785b6a49c51a76df977ec0f838730867ca167cdac73bf2283217a",
+      "ecosystem": "go",
+      "fixed_ref": "8c9b9a1aff218ee6c980d047b750e49da3c46796",
+      "fixed_segments": [
+        {
+          "end": 23,
+          "start": 2
+        },
+        {
+          "end": 103,
+          "start": 36
+        }
+      ],
+      "guard_class": "size-cap",
+      "language": "go",
+      "license_spdx": "AGPL-3.0",
+      "rule_sha256": "2cd04ab33ae679c4eb1d0c891d85d1910737e4908082f0242fb89a194a2d1c5a",
+      "vuln_ref": "1218a417ae9dfd3d053a7dce7d626ca9b8895361",
+      "vuln_segments": [
+        {
+          "end": 16,
+          "start": 2
+        },
+        {
+          "end": 72,
+          "start": 30
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-p7v4-vr35-mj6f",
+      "case_sha256": "baa3b6931b7cd285ef94d21d9962a57c49c8422337ca1181642696b94658c6bf",
+      "ecosystem": "go",
+      "fixed_ref": "928c03c6898cad95f795300281fdff0dbc55a32f",
+      "fixed_segments": [
+        {
+          "end": 599,
+          "start": 240
+        }
+      ],
+      "guard_class": "auth-check",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "3ab1a361b053a50eabbcbad73d7e948f670e46387e4da634a081b2c25b65abc3",
+      "vuln_ref": "2cb32f0885e743db97713f7edac41c5065206557",
+      "vuln_segments": [
+        {
+          "end": 596,
+          "start": 240
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-pw5q-rjx4-7f7p",
+      "case_sha256": "30b013d83657bbf19f06a2dec8a678806ae042a8fe8a91185a05c3fb1e4cd585",
+      "ecosystem": "go",
+      "fixed_ref": "21ea962f86d967dac8ae02a050f6e5f043d10fa1",
+      "fixed_segments": [
+        {
+          "end": 336,
+          "start": 251
+        },
+        {
+          "end": 380,
+          "start": 339
+        }
+      ],
+      "guard_class": "auth-check",
+      "language": "go",
+      "license_spdx": "BSD-3-Clause",
+      "rule_sha256": "aeea40b379b9980d6908d63a433507d5115356de27ed4d068d81d49c9dfd1b4c",
+      "vuln_ref": "97b9e9c83053ee9d78d23a4bf572defb19665721",
+      "vuln_segments": [
+        {
+          "end": 315,
+          "start": 251
+        },
+        {
+          "end": 341,
+          "start": 318
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-pwhx-cvv3-qj5c",
+      "case_sha256": "ae2f33eabbd60dccd6628941f9f4449fe26b8e5179ba353e15cbbf1d9e24aa46",
+      "ecosystem": "npm",
+      "fixed_ref": "d030d414d39e15de79bf36e4c728d57205e71dde",
+      "fixed_segments": [
+        {
+          "end": 416,
+          "start": 14
+        }
+      ],
+      "guard_class": "escaping-encoding",
+      "language": "typescript",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "6f6be724803cf1ed7311a96fd7c5ed26ef431cb480cbb277b860a60b519e2629",
+      "vuln_ref": "df351832c37fd0efaf5a06cb6cde9a5ec404201e",
+      "vuln_segments": [
+        {
+          "end": 412,
+          "start": 14
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-qfxx-c367-67f8",
+      "case_sha256": "bc57fb3a0a3e04c1056a7b6bda24d1a76d7c92e478fa00897063b52c906277c4",
+      "ecosystem": "npm",
+      "fixed_ref": "d9eb36f413153e28b04b92d8ce4447da270371c0",
+      "fixed_segments": [
+        {
+          "end": 699,
+          "start": 1
+        }
+      ],
+      "guard_class": "symlink-toctou-check",
+      "language": "typescript",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "9b06e27680c3b4ae32e3fc60bb56bdfbf6563d667e67ef6abf4b8cf4d2877618",
+      "vuln_ref": "b483d82b1348470e38d3160452e4d0166ae33840",
+      "vuln_segments": [
+        {
+          "end": 616,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-qj98-gp63-54xj",
+      "case_sha256": "78ba84a4e06deb6a1b02f001c51f83ed3a492c1402a02bb9710840f397959f1c",
+      "ecosystem": "go",
+      "fixed_ref": "c32f6041387fa631dbc057e265b71aec3384ead1",
+      "fixed_segments": [
+        {
+          "end": 136,
+          "start": 57
+        },
+        {
+          "end": 396,
+          "start": 212
+        }
+      ],
+      "guard_class": "auth-check",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "f0c1c84964f9afd571d04a9dc0ce10dcff30ecbb3a2bac17a6955d82e9b99bd2",
+      "vuln_ref": "4caa27578667a8171e1bdfca4332fa7cb433065a",
+      "vuln_segments": [
+        {
+          "end": 125,
+          "start": 57
+        },
+        {
+          "end": 370,
+          "start": 201
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-qx66-fv34-fjm8",
+      "case_sha256": "0613886cc8a2b817f18081eda88a4a99dd1a2bef8e90289e12808ea1d6b30cd5",
+      "ecosystem": "npm",
+      "fixed_ref": "d521abd71c69f1ff010bb3def4d417cb5fa058cb",
+      "fixed_segments": [
+        {
+          "end": 240,
+          "start": 69
+        },
+        {
+          "end": 535,
+          "start": 527
+        }
+      ],
+      "guard_class": "input-validation",
+      "language": "typescript",
+      "license_spdx": "MIT",
+      "rule_sha256": "328e81f22adda6df9ae506328d53aaf601f7371d9d32171b014483ad957ac182",
+      "vuln_ref": "614bc27034c8ec98747bf305ed41d4a619640949",
+      "vuln_segments": [
+        {
+          "end": 231,
+          "start": 69
+        },
+        {
+          "end": 528,
+          "start": 518
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-v75v-6fpf-gvw8",
+      "case_sha256": "9a1706931ecd38f9783f989db1b4841813d96809958655fefd0b372257dceae2",
+      "ecosystem": "go",
+      "fixed_ref": "3140c1846cd120db34f33b2083139b4ab638aed2",
+      "fixed_segments": [
+        {
+          "end": 215,
+          "start": 1
+        }
+      ],
+      "guard_class": "escaping-encoding",
+      "language": "go",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "43f500c4abf087236b69576908cf247d75ba39626fe1f4d0c1c8557cd494f62d",
+      "vuln_ref": "2b93feb45f35b8612f502cb72169dc3f79d6d4c8",
+      "vuln_segments": [
+        {
+          "end": 214,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-vrcc-3ch7-hppw",
+      "case_sha256": "d3d136cec70b85f66ff4f9b517797453e399a5cfdf31651140c2407eeeb493ab",
+      "ecosystem": "go",
+      "fixed_ref": "9814d1f2b212f3508bf52296aa9e248b2122a5a9",
+      "fixed_segments": [
+        {
+          "end": 619,
+          "start": 590
+        },
+        {
+          "end": 1133,
+          "start": 1034
+        }
+      ],
+      "guard_class": "input-validation",
+      "language": "go",
+      "license_spdx": "MIT",
+      "rule_sha256": "8a6de0008df6ca5a20f8bb724c69ccc9d967d9cdf23588040367e44198836e9f",
+      "vuln_ref": "9245cef66c840e27a08409a8a5cd0ee930c5bcff",
+      "vuln_segments": [
+        {
+          "end": 616,
+          "start": 590
+        },
+        {
+          "end": 1127,
+          "start": 1031
+        }
+      ],
+      "window_mode": "trimmed"
+    },
+    {
+      "case_id": "GHSA-w5f2-9q9c-ff4h",
+      "case_sha256": "87fa4a8b147523a1fb272ed28e2adaf24162dc270f97e7256a136780800c5755",
+      "ecosystem": "pip",
+      "fixed_ref": "160b6dec469edb765efd1fad42aca5a438b08bb5",
+      "fixed_segments": [
+        {
+          "end": 217,
+          "start": 1
+        }
+      ],
+      "guard_class": "allowlist-denylist",
+      "language": "python",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "a5fb215f700e7f556340d485eab6f01c59feb71690e5966b6764d481a5a7d502",
+      "vuln_ref": "5070f183f260258611c1252e996ad12e2cee5b7f",
+      "vuln_segments": [
+        {
+          "end": 169,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-x34j-47hf-4xg7",
+      "case_sha256": "5dda595523d40913609dc0c80d935754431fa1eb0a59bc84f5204804c331de00",
+      "ecosystem": "npm",
+      "fixed_ref": "b57dbf4b56201aef15cd92caa49fd12ab96bbecf",
+      "fixed_segments": [
+        {
+          "end": 53,
+          "start": 1
+        }
+      ],
+      "guard_class": "allowlist-denylist",
+      "language": "typescript",
+      "license_spdx": "Apache-2.0",
+      "rule_sha256": "e8e0ae595a0bc4fcc87762ee1bd47bf8211ae50fa7bd5f165988383086fb56d5",
+      "vuln_ref": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+      "vuln_segments": [
+        {
+          "end": 61,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-x586-xvc8-g7q6",
+      "case_sha256": "169c7bec1bab9d5050346d1e2d4d862fe2d5a2bb5f1f0d4f1b48448a54a03e75",
+      "ecosystem": "npm",
+      "fixed_ref": "c1e7444402f9592b5cf9096e10bf303ab4640511",
+      "fixed_segments": [
+        {
+          "end": 736,
+          "start": 1
+        }
+      ],
+      "guard_class": "type-range-check",
+      "language": "typescript",
+      "license_spdx": "MIT",
+      "rule_sha256": "1fe1073bdfb5e2cfc370ec0643afaa861166e0c3752fea92e5008d296d49ac7e",
+      "vuln_ref": "eb381ba48fcb76ab9f72d6fb5eab49504cb5d9a3",
+      "vuln_segments": [
+        {
+          "end": 712,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    },
+    {
+      "case_id": "GHSA-xv7q-fvmc-jx96",
+      "case_sha256": "c30cbc74f9d2e06e04e882fb29c628b8614109acc0b39ea9b79013e073c0180d",
+      "ecosystem": "go",
+      "fixed_ref": "7854f2729ab72000210b61c25929678fd6901630",
+      "fixed_segments": [
+        {
+          "end": 661,
+          "start": 1
+        }
+      ],
+      "guard_class": "auth-check",
+      "language": "go",
+      "license_spdx": "AGPL-3.0",
+      "rule_sha256": "c75f3494b2afc3e6c908974ab44d33dacb10653f4c88fc1ba65ab47ea621da0d",
+      "vuln_ref": "be36c11e67d6a3a10643b17a0bcbc33d09de836a",
+      "vuln_segments": [
+        {
+          "end": 637,
+          "start": 1
+        }
+      ],
+      "window_mode": "whole_file"
+    }
+  ],
+  "corpus": {
+    "commit": "c5bd9ad219fed12b982e445708b7afbb413b6bd8",
+    "remote_url": "https://github.com/beardthelion/cve-variant-sweep.git"
+  },
+  "dataset_version": "v1",
+  "redpen_version": "0.1.0",
+  "schema_version": 1,
+  "semgrep_version": "1.177.0",
+  "window_policy": {
+    "context_lines": 3,
+    "version": "window-v1"
+  }
+}

@@ -1,0 +1,26 @@
+rules:
+  - id: cve-variant-sweep-GHSA-47c3-hpmg-7j6p
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Client-supplied id joined into a filesystem path in _local_dir without
+      validate_bookmark_id. Path segments from the client must be allowlisted
+      before Path() joins (variant of GHSA-47c3-hpmg-7j6p / CVE-2026-108258).
+    metadata:
+      ghsa_id: GHSA-47c3-hpmg-7j6p
+      cve: CVE-2026-108258
+      ecosystem: pip
+      guard_class: input-validation
+      engine: semgrep
+      date: "2026-10-14"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-inside: |
+          def _local_dir($ID):
+            ...
+      - pattern: Path(...) / $Y / $ID
+      - pattern-not-inside: |
+          def _local_dir(...):
+            ...
+            validate_bookmark_id(...)
+            ...

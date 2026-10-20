@@ -1,0 +1,64 @@
+{
+  "case_id": "GHSA-685w-q87j-wqw3",
+  "copyright_notice": "Copyright the distribution/distribution contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-85747",
+  "cve_published_at": "2026-10-15T20:22:02Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-07-21T14:08:36+01:00",
+  "fixed": {
+    "file": "fixed/repository.go",
+    "header_lines": 5,
+    "original_line_count": 1023,
+    "segments": [
+      {
+        "end": 623,
+        "start": 510
+      }
+    ]
+  },
+  "fixed_ref": "8f91c26c8888a95a36c2357a6e30bc15d4dd76d3",
+  "guard_class": "input-validation",
+  "language": "go",
+  "license_dir": "licenses/distribution__distribution",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/distribution/distribution",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "d660c3938b6db8bdeadf27553be0556a7f4af2ac7b56690d58a8240a1f80b097",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "internal/client/repository.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 597,
+        "source": "semgrep",
+        "start": 510
+      },
+      {
+        "end": 539,
+        "source": "fix_diff",
+        "start": 538
+      },
+      {
+        "end": 592,
+        "source": "fix_diff",
+        "start": 591
+      }
+    ],
+    "file": "vuln/repository.go",
+    "header_lines": 5,
+    "location_selectivity": 1.0,
+    "original_line_count": 997,
+    "segments": [
+      {
+        "end": 597,
+        "start": 510
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "manifests.Get() unmarshals a registry manifest without verifying the returned bytes hash to the requested digest. A malicious registry can serve arbitrary bytes while forging Docker-Content-Digest (variant of GHSA-685w-q87j-wqw3 / CVE-2026-85747).",
+  "vuln_ref": "39d5bf77773818e2e38e0bd87f8ff75d4be740f1",
+  "window_mode": "trimmed"
+}

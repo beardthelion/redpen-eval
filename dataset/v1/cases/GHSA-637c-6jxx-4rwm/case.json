@@ -1,0 +1,129 @@
+{
+  "case_id": "GHSA-637c-6jxx-4rwm",
+  "copyright_notice": "Copyright 2021 The KEDA Authors",
+  "copyright_source": "sink_file",
+  "cve": "CVE-2026-77524",
+  "cve_published_at": "2026-10-15T20:19:42Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-09-23T12:04:30+02:00",
+  "fixed": {
+    "file": "fixed/hashicorpvault_handler.go",
+    "header_lines": 5,
+    "original_line_count": 460,
+    "segments": [
+      {
+        "end": 27,
+        "start": 19
+      },
+      {
+        "end": 39,
+        "start": 31
+      },
+      {
+        "end": 241,
+        "start": 58
+      }
+    ]
+  },
+  "fixed_ref": "1e21cc798dedd079e696cdb45388eddc5e18365d",
+  "guard_class": "allowlist-denylist",
+  "language": "go",
+  "license_dir": "licenses/kedacore__keda",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/kedacore/keda",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "c161b98321470602448e90e4117a5784e88cb827c14034738c4a1b265c202a74",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "pkg/scaling/resolver/hashicorpvault_handler.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 126,
+        "source": "semgrep",
+        "start": 126
+      },
+      {
+        "end": 23,
+        "source": "fix_diff",
+        "start": 22
+      },
+      {
+        "end": 33,
+        "source": "fix_diff",
+        "start": 33
+      },
+      {
+        "end": 56,
+        "source": "fix_diff",
+        "start": 55
+      },
+      {
+        "end": 71,
+        "source": "fix_diff",
+        "start": 71
+      },
+      {
+        "end": 97,
+        "source": "fix_diff",
+        "start": 97
+      },
+      {
+        "end": 100,
+        "source": "fix_diff",
+        "start": 99
+      },
+      {
+        "end": 108,
+        "source": "fix_diff",
+        "start": 108
+      },
+      {
+        "end": 130,
+        "source": "fix_diff",
+        "start": 122
+      },
+      {
+        "end": 140,
+        "source": "fix_diff",
+        "start": 132
+      },
+      {
+        "end": 148,
+        "source": "fix_diff",
+        "start": 147
+      },
+      {
+        "end": 157,
+        "source": "fix_diff",
+        "start": 156
+      }
+    ],
+    "file": "vuln/hashicorpvault_handler.go",
+    "header_lines": 5,
+    "location_selectivity": 0.8103448275862069,
+    "original_line_count": 376,
+    "segments": [
+      {
+        "end": 26,
+        "start": 19
+      },
+      {
+        "end": 36,
+        "start": 30
+      },
+      {
+        "end": 94,
+        "start": 55
+      },
+      {
+        "end": 157,
+        "start": 97
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "Vault authentication silently defaults to the operator's Kubernetes service-account token file. A leaked token grants Kubernetes API access from tenant-controlled Vault destinations (variant of GHSA-637c-6jxx-4rwm / CVE-2026-77524).",
+  "vuln_ref": "2963aa3d3ba073a01f56865a557563ba40a2174c",
+  "window_mode": "trimmed"
+}

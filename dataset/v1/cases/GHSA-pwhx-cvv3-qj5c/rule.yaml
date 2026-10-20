@@ -1,0 +1,17 @@
+rules:
+  - id: cve-variant-sweep-GHSA-pwhx-cvv3-qj5c
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      Value interpolated raw between quotes inside a generated-code template
+      literal. Emit JS literals via JSON.stringify instead (variant of
+      GHSA-pwhx-cvv3-qj5c / CVE-2026-108259).
+    metadata:
+      ghsa_id: GHSA-pwhx-cvv3-qj5c
+      cve: CVE-2026-108259
+      ecosystem: npm
+      guard_class: escaping-encoding
+      engine: semgrep
+      date: "2026-10-14"
+      author: cve-variant-sweep
+    pattern-regex: '`[^`]*''\$\{'

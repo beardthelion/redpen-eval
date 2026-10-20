@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-685w-q87j-wqw3
+    languages: [go]
+    severity: WARNING
+    message: >-
+      manifests.Get() unmarshals a registry manifest without verifying the
+      returned bytes hash to the requested digest. A malicious registry can
+      serve arbitrary bytes while forging Docker-Content-Digest (variant of
+      GHSA-685w-q87j-wqw3 / CVE-2026-85747).
+    metadata:
+      ghsa_id: GHSA-685w-q87j-wqw3
+      cve: CVE-2026-85747
+      ecosystem: go
+      guard_class: input-validation
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func (ms *manifests) Get(...) (...) {
+            ...
+          }
+      - pattern-not-regex: (?s)verifier\.Verified\(\)

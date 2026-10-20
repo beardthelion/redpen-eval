@@ -1,0 +1,404 @@
+// Source: https://github.com/tinacms/tinacms
+// Ref: df351832c37fd0efaf5a06cb6cde9a5ec404201e Path: packages/@tinacms/cli/src/next/codegen/index.ts
+// Excerpted and modified from https://github.com/tinacms/tinacms@df351832c37fd0efaf5a06cb6cde9a5ec404201e on 2026-10-20
+// License: Apache-2.0, see licenses/tinacms__tinacms/LICENSE
+// Copyright the tinacms/tinacms contributors
+export class Codegen {
+  configManager: ConfigManager;
+  port?: number;
+  schema: GraphQLSchema;
+  queryDoc: string;
+  fragDoc: string;
+  isLocal: boolean;
+  // The API url used in the client
+  apiURL: string;
+  // This is always the local URL.
+  localUrl: string;
+  // production url
+  productionUrl: string;
+  // URL for the local GraphQL server used during --content=local builds
+  localBuildUrl?: string;
+  graphqlSchemaDoc: DocumentNode;
+  tinaSchema: TinaSchema;
+  lookup: any;
+  noClientBuildCache: boolean;
+  // When true, queries run locally but the generated client points to TinaCloud
+  localContentBuild: boolean;
+
+  constructor({
+    configManager,
+    port,
+    queryDoc,
+    fragDoc,
+    isLocal,
+    localContentBuild,
+    graphqlSchemaDoc,
+    tinaSchema,
+    lookup,
+    noClientBuildCache,
+  }: {
+    configManager: ConfigManager;
+    port?: number;
+    queryDoc: string;
+    fragDoc: string;
+    isLocal: boolean;
+    localContentBuild?: boolean;
+    graphqlSchemaDoc: DocumentNode;
+    tinaSchema: TinaSchema;
+    lookup: any;
+    noClientBuildCache: boolean;
+  }) {
+    this.isLocal = isLocal;
+    this.localContentBuild = localContentBuild || false;
+    this.graphqlSchemaDoc = graphqlSchemaDoc;
+    this.configManager = configManager;
+    this.port = port;
+    this.schema = buildASTSchema(graphqlSchemaDoc);
+    this.tinaSchema = tinaSchema;
+    this.queryDoc = queryDoc;
+    this.fragDoc = fragDoc;
+    this.lookup = lookup;
+    this.noClientBuildCache = noClientBuildCache;
+  }
+
+  async writeConfigFile(fileName: string, data: string) {
+    const filePath = path.join(
+      this.configManager.generatedFolderPath,
+      fileName
+    );
+    await fs.ensureFile(filePath);
+    await fs.outputFile(filePath, data);
+  }
+
+  async removeGeneratedFilesIfExists() {
+    await unlinkIfExists(this.configManager.generatedClientJSFilePath);
+    await unlinkIfExists(this.configManager.generatedTypesDFilePath);
+    await unlinkIfExists(this.configManager.generatedTypesJSFilePath);
+    await unlinkIfExists(this.configManager.generatedTypesTSFilePath);
+    await unlinkIfExists(this.configManager.generatedClientTSFilePath);
+    await unlinkIfExists(this.configManager.generatedQueriesFilePath);
+    await unlinkIfExists(this.configManager.generatedFragmentsFilePath);
+  }
+
+  async execute() {
+    // Update Config Files
+
+    // update _graphql.json
+    await this.writeConfigFile(
+      '_graphql.json',
+      JSON.stringify(this.graphqlSchemaDoc)
+    );
+
+    // Strip the sensitive indexerToken before writing to _schema.json / tina-lock.json.
+    // See CVE-2024-45391 / GHSA-4qrm-9h4r-v2fx for security context.
+    this.tinaSchema.schema.config = stripSearchTokenFromConfig(
+      this.tinaSchema.schema.config
+    );
+
+    // update _schema.json
+    await this.writeConfigFile(
+      '_schema.json',
+      JSON.stringify(this.tinaSchema.schema)
+    );
+    // update _lookup.json
+    await this.writeConfigFile('_lookup.json', JSON.stringify(this.lookup));
+
+    const { apiURL, localUrl, tinaCloudUrl, localBuildUrl } =
+      this._createApiUrl();
+    this.apiURL = apiURL;
+    this.localUrl = localUrl;
+    this.productionUrl = tinaCloudUrl;
+    this.localBuildUrl = localBuildUrl;
+
+    if (this.configManager.shouldSkipSDK()) {
+      await this.removeGeneratedFilesIfExists();
+      return apiURL;
+    }
+    await fs.outputFile(
+      this.configManager.generatedQueriesFilePath,
+      this.queryDoc
+    );
+    await fs.outputFile(
+      this.configManager.generatedFragmentsFilePath,
+      this.fragDoc
+    );
+    await maybeWarnFragmentSize(this.configManager.generatedFragmentsFilePath);
+
+    const { clientString } = await this.genClient();
+    const databaseClientString = this.configManager.hasSelfHostedConfig()
+      ? await this.genDatabaseClient()
+      : '';
+    const { codeString, schemaString } = await this.genTypes();
+
+    await fs.outputFile(
+      this.configManager.generatedGraphQLGQLPath,
+      schemaString
+    );
+    if (this.configManager.isUsingTs()) {
+      await fs.outputFile(
+        this.configManager.generatedTypesTSFilePath,
+        codeString
+      );
+      // Co-resident types.js so the generated `import { queries } from "./types.js"`
+      // works under Node native ESM at runtime. Modern TS module resolution
+      // (bundler / node16 / nodenext) rewrites the .js import to types.ts at
+      // compile time, so type checking still sees the .ts source.
+      const jsTypes = await transform(codeString, { loader: 'ts' });
+      await fs.outputFile(
+        this.configManager.generatedTypesJSFilePath,
+        jsTypes.code
+      );
+      await fs.outputFile(
+        this.configManager.generatedClientTSFilePath,
+        clientString
+      );
+      if (this.configManager.hasSelfHostedConfig()) {
+        await fs.outputFile(
+          this.configManager.generatedDatabaseClientTSFilePath,
+          databaseClientString
+        );
+      }
+      await unlinkIfExists(this.configManager.generatedClientJSFilePath);
+      await unlinkIfExists(this.configManager.generatedTypesDFilePath);
+    } else {
+      // Write out the generated types.
+      // write types.js and types.d.ts
+      await fs.outputFile(
+        this.configManager.generatedTypesDFilePath,
+        codeString
+      );
+      const jsTypes = await transform(codeString, { loader: 'ts' });
+      await fs.outputFile(
+        this.configManager.generatedTypesJSFilePath,
+        jsTypes.code
+      );
+      // Write out the generated client.
+      // write client.js and client.d.ts
+      await fs.outputFile(
+        this.configManager.generatedClientDFilePath,
+        clientString
+      );
+      const jsClient = await transform(clientString, { loader: 'ts' });
+      await fs.outputFile(
+        this.configManager.generatedClientJSFilePath,
+        jsClient.code
+      );
+      await unlinkIfExists(this.configManager.generatedTypesTSFilePath);
+      await unlinkIfExists(this.configManager.generatedClientTSFilePath);
+
+      if (this.configManager.hasSelfHostedConfig()) {
+        /// Write out the generated client
+        // write databaseClient.js and databaseClient.d.ts
+        const jsDatabaseClient = await transform(databaseClientString, {
+          loader: 'ts',
+        });
+        await fs.outputFile(
+          this.configManager.generatedDatabaseClientJSFilePath,
+          jsDatabaseClient.code
+        );
+        await fs.outputFile(
+          this.configManager.generatedDatabaseClientDFilePath,
+          databaseClientString
+        );
+        await unlinkIfExists(
+          this.configManager.generatedDatabaseClientTSFilePath
+        );
+      }
+    }
+    return apiURL;
+  }
+
+  private _createApiUrl() {
+    const branch = this.configManager.config?.branch;
+    const clientId = this.configManager.config?.clientId;
+    const token = this.configManager.config?.token;
+    const fullVersion = this.configManager.getTinaGraphQLVersion();
+    const version = `${fullVersion.major}.${fullVersion.minor}`;
+    const baseUrl =
+      this.configManager.config.tinaioConfig?.contentApiUrlOverride ||
+      `https://${TINA_HOST}`;
+
+    if (
+      (!branch || !clientId || !token) &&
+      !this.port &&
+      !this.configManager.config.contentApiUrlOverride
+    ) {
+      const missing = [];
+      if (!branch) missing.push('branch');
+      if (!clientId) missing.push('clientId');
+      if (!token) missing.push('token');
+
+      throw new Error(
+        `Client not configured properly. Missing ${missing.join(
+          ', '
+        )}. Please visit https://tina.io/docs/r/what-is-tinacloud for more information`
+      );
+    }
+    let localUrl = `http://localhost:${this.port}/graphql`;
+    let tinaCloudUrl = `${baseUrl}/${version}/content/${clientId}/github/${branch}`;
+
+    let apiURL: string;
+    if (this.isLocal && !this.localContentBuild) {
+      apiURL = `http://localhost:${this.port}/graphql`;
+    } else {
+      apiURL = `${baseUrl}/${version}/content/${clientId}/github/${branch}`;
+    }
+
+    if (this.configManager.config.contentApiUrlOverride) {
+      apiURL = this.configManager.config.contentApiUrlOverride;
+      localUrl = apiURL;
+      tinaCloudUrl = apiURL;
+    }
+    const localBuildUrl = this.port
+      ? `http://localhost:${this.port}/graphql`
+      : undefined;
+    return { apiURL, localUrl, tinaCloudUrl, localBuildUrl };
+  }
+
+  getApiURL() {
+    if (!this.apiURL)
+      throw new Error('apiURL not set. Please run execute() first');
+    return this.apiURL;
+  }
+
+  async genDatabaseClient() {
+    const authCollection = this.tinaSchema
+      .getCollections()
+      .find((c) => c.isAuthCollection);
+    let authFields = [];
+    if (authCollection) {
+      const usersFields = mapUserFields(authCollection, []);
+      if (usersFields.length === 0) {
+        throw new Error('No user field found');
+      }
+      if (usersFields.length > 1) {
+        throw new Error('Only one user field is allowed');
+      }
+      authFields = usersFields[0]?.collectable?.fields.map((f) => {
+        if (f.type !== 'password' && f.type !== 'object') {
+          if (f.uid) {
+            return `id:${f.name}`;
+          } else {
+            return `${f.name}`;
+          }
+        } else if (f.type === 'password') {
+          return `_password: ${f.name} { passwordChangeRequired }`;
+        }
+      });
+    }
+    return `// @ts-nocheck
+import { resolve } from "@tinacms/datalayer";
+import type { TinaClient } from "tinacms/dist/client";
+
+import { queries } from "./types.js";
+import database from "../database";
+
+export async function databaseRequest({ query, variables, user }) {
+  const result = await resolve({
+    config: {
+      useRelativeMedia: true,
+    },
+    database,
+    query,
+    variables,
+    verbose: true,
+    ctxUser: user,
+  });
+
+  return result;
+}
+
+export async function authenticate({ username, password }) {
+    return databaseRequest({
+      query: \`query auth($username:String!, $password:String!) {
+              authenticate(sub:$username, password:$password) {
+               ${authFields.join(' ')}
+              }
+            }\`,
+      variables: { username, password },
+    })
+}
+
+export async function authorize(user: { sub: string }) {
+  return databaseRequest({
+    query: \`query authz { authorize { ${authFields.join(' ')}} }\`,
+    variables: {},
+    user
+  })
+}
+
+function createDatabaseClient<GenQueries = Record<string, unknown>>({
+  queries,
+}: {
+  queries: (client: {
+    request: TinaClient<GenQueries>["request"];
+  }) => GenQueries;
+}) {
+  const request = async ({ query, variables, user }) => {
+    const data = await databaseRequest({ query, variables, user });
+    return { data: data.data as any, query, variables, errors: data.errors || null };
+  };
+  const q = queries({
+    request,
+  });
+  return { queries: q, request, authenticate, authorize };
+}
+
+export const databaseClient = createDatabaseClient({ queries });
+
+export const client = databaseClient;
+
+export default databaseClient;
+`;
+  }
+
+  async genClient() {
+    const token = this.configManager.config?.token;
+    const errorPolicy = this.configManager.config?.client?.errorPolicy;
+    const apiURL = this.getApiURL();
+
+    const clientString = `import { createClient } from "tinacms/dist/client";
+import { queries } from "./types.js";
+export const client = createClient({ ${
+      this.noClientBuildCache === false
+        ? `cacheDir: '${normalizePath(
+            this.configManager.generatedCachePath
+          )}', `
+        : ''
+    }url: ${this.localContentBuild ? `process.env.TINA_LOCAL_URL || '${apiURL}'` : `'${apiURL}'`}, token: '${token}', queries, ${
+      errorPolicy ? `errorPolicy: '${errorPolicy}'` : ''
+    } });
+export default client;
+  `;
+    return { apiURL, clientString };
+  }
+
+  async genTypes() {
+    const typescriptTypes = await generateTypes(
+      this.schema,
+      this.configManager.userQueriesAndFragmentsGlob,
+      this.configManager.generatedQueriesAndFragmentsGlob,
+      this.getApiURL()
+    );
+    const codeString = `//@ts-nocheck
+  // DO NOT MODIFY THIS FILE. This file is automatically generated by Tina
+  export function gql(strings: TemplateStringsArray, ...args: string[]): string {
+    let str = ''
+    strings.forEach((string, i) => {
+      str += string + (args[i] || '')
+    })
+    return str
+  }
+  ${typescriptTypes}
+  `;
+
+    const schemaString = `# DO NOT MODIFY THIS FILE. This file is automatically generated by Tina
+${printSchema(this.schema)}
+schema {
+  query: Query
+  mutation: Mutation
+}
+`;
+    return { codeString, schemaString };
+  }
+}

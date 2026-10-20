@@ -1,0 +1,22 @@
+rules:
+  - id: cve-variant-sweep-GHSA-g8cf-rcjf-c8cf
+    languages: [go]
+    severity: WARNING
+    message: >-
+      decodeValue recurses into allOf/anyOf/oneOf subschemas without cycle
+      detection. A circular schema exhausts the goroutine stack and crashes
+      the process (variant of GHSA-g8cf-rcjf-c8cf / CVE-2026-100354).
+    metadata:
+      ghsa_id: GHSA-g8cf-rcjf-c8cf
+      cve: CVE-2026-100354
+      ecosystem: go
+      guard_class: size-cap
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-inside: |
+          func decodeValue(dec $A, param $B, sm $C, schema $D, required $E) (...) {
+            ...
+          }
+      - pattern: decodeValue(dec, param, sm, $SR, required)

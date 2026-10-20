@@ -1,0 +1,271 @@
+// Source: https://github.com/dgraph-io/dgraph
+// Ref: c32f6041387fa631dbc057e265b71aec3384ead1 Path: dgraph/cmd/zero/run.go
+// Excerpted and modified from https://github.com/dgraph-io/dgraph@c32f6041387fa631dbc057e265b71aec3384ead1 on 2026-10-20
+// License: Apache-2.0, see licenses/dgraph-io__dgraph/LICENSE.txt
+// Copyright the dgraph-io/dgraph contributors
+func init() {
+	Zero.Cmd = &cobra.Command{
+		Use:   "zero",
+		Short: "Run Dgraph Zero management server ",
+		Long: `
+A Dgraph Zero instance manages the Dgraph cluster.  Typically, a single Zero
+instance is sufficient for the cluster; however, one can run multiple Zero
+instances to achieve high-availability.
+`,
+		Run: func(cmd *cobra.Command, args []string) {
+			defer x.StartProfile(Zero.Conf).Stop()
+			run()
+		},
+		Annotations: map[string]string{"group": "core"},
+	}
+	Zero.EnvPrefix = "DGRAPH_ZERO"
+	Zero.Cmd.SetHelpTemplate(x.NonRootTemplate)
+
+	flag := Zero.Cmd.Flags()
+	x.FillCommonFlags(flag)
+	// --tls SuperFlag
+	x.RegisterServerTLSFlags(flag)
+
+	flag.IntP("port_offset", "o", 0,
+		"Value added to all listening port numbers. [Grpc=5080, HTTP=6080]")
+	flag.Int("replicas", 1, "How many Dgraph Alpha replicas to run per data shard group."+
+		" The count includes the original shard.")
+	flag.String("peer", "", "Address of another dgraphzero server.")
+	flag.StringP("wal", "w", "zw", "Directory storing WAL.")
+	flag.Duration("rebalance_interval", 8*time.Minute, "Interval for trying a predicate move.")
+	flag.String("enterprise_license", "", "(deprecated) Path to the enterprise license file.")
+	flag.String("cid", "", "Cluster ID")
+
+	flag.String("limit", worker.ZeroLimitsDefaults, z.NewSuperFlagHelp(worker.ZeroLimitsDefaults).
+		Head("Limit options").
+		Flag("uid-lease",
+			`The maximum number of UIDs that can be leased by namespace (except default namespace)
+			in an interval specified by refill-interval. Set it to 0 to remove limiting.`).
+		Flag("refill-interval",
+			"The interval after which the tokens for UID lease are replenished.").
+		Flag("disable-admin-http",
+			"Turn on/off the administrative endpoints exposed over Zero's HTTP port.").
+		String())
+
+	flag.String("raft", raftDefaults, z.NewSuperFlagHelp(raftDefaults).
+		Head("Raft options").
+		Flag("idx",
+			"Provides an optional Raft ID that this Alpha would use to join Raft groups.").
+		Flag("learner",
+			`Make this Zero a "learner" node. In learner mode, this Zero will not participate `+
+				"in Raft elections. This can be used to achieve a read-only replica.").
+		String())
+
+	flag.String("security", worker.SecurityDefaults, z.NewSuperFlagHelp(worker.SecurityDefaults).
+		Head("Security options").
+		Flag("token",
+			"If set, all requests to Zero's administrative HTTP endpoints must present this token "+
+				"in the X-Dgraph-AuthToken header.").
+		Flag("whitelist",
+			"A comma separated list of IP addresses, IP ranges, CIDR blocks, or hostnames that are "+
+				"allowed to reach Zero's administrative HTTP endpoints (loopback is always allowed). "+
+				`e.g. --security "whitelist=127.0.0.1,192.168.0.0/16,host.docker.internal".`).
+		String())
+
+	flag.String("audit", worker.AuditDefaults, z.NewSuperFlagHelp(worker.AuditDefaults).
+		Head("Audit options").
+		Flag("output",
+			`[stdout, /path/to/dir] This specifies where audit logs should be output to.
+			"stdout" is for standard output. You can also specify the directory where audit logs
+			will be saved. When stdout is specified as output other fields will be ignored.`).
+		Flag("compress",
+			"Enables the compression of old audit logs.").
+		Flag("encrypt-file",
+			"The path to the key file to be used for audit log encryption.").
+		Flag("days",
+			"The number of days audit logs will be preserved.").
+		Flag("size",
+			"The audit log max size in MB after which it will be rolled over.").
+		String())
+}
+// ... lines 137-211 omitted ...
+func run() {
+	telemetry := z.NewSuperFlag(Zero.Conf.GetString("telemetry")).
+		MergeAndCheckDefault(x.TelemetryDefaults)
+
+	x.PrintVersion()
+	tlsConf, err := x.LoadClientTLSConfigForInternalPort(Zero.Conf)
+	x.Check(err)
+
+	raft := z.NewSuperFlag(Zero.Conf.GetString("raft")).MergeAndCheckDefault(
+		raftDefaults)
+	auditConf := audit.GetAuditConf(Zero.Conf.GetString("audit"))
+	limit := z.NewSuperFlag(Zero.Conf.GetString("limit")).MergeAndCheckDefault(
+		worker.ZeroLimitsDefaults)
+	limitConf := &x.LimiterConf{
+		UidLeaseLimit: limit.GetUint64("uid-lease"),
+		RefillAfter:   limit.GetDuration("refill-interval"),
+	}
+	opts = options{
+		telemetry:         telemetry,
+		raft:              raft,
+		limit:             limit,
+		bindall:           Zero.Conf.GetBool("bindall"),
+		portOffset:        Zero.Conf.GetInt("port_offset"),
+		numReplicas:       Zero.Conf.GetInt("replicas"),
+		peer:              Zero.Conf.GetString("peer"),
+		w:                 Zero.Conf.GetString("wal"),
+		rebalanceInterval: Zero.Conf.GetDuration("rebalance_interval"),
+		tlsClientConfig:   tlsConf,
+		audit:             auditConf,
+		limiterConfig:     limitConf,
+	}
+	glog.Infof("Setting Config to: %+v", opts)
+	x.WorkerConfig.Parse(Zero.Conf)
+
+	// Protect Zero's administrative HTTP endpoints. Unlike Alpha, Zero previously registered
+	// these routes with no authentication at all; a reachable HTTP port (default 6080) exposed
+	// destructive control-plane operations to any unauthenticated caller.
+	security := z.NewSuperFlag(Zero.Conf.GetString("security")).MergeAndCheckDefault(
+		worker.SecurityDefaults)
+	worker.Config.AuthToken = security.GetString("token")
+	ips, err := x.GetIPsFromString(security.GetString("whitelist"))
+	x.Check(err)
+	x.WorkerConfig.WhiteListedIPRanges = ips
+
+	if opts.numReplicas < 0 || opts.numReplicas%2 == 0 {
+		log.Fatalf("ERROR: Number of replicas must be odd for consensus. Found: %d",
+			opts.numReplicas)
+	}
+
+	if opts.audit != nil {
+		wd, err := filepath.Abs(opts.w)
+		x.Check(err)
+		ad, err := filepath.Abs(opts.audit.Output)
+		x.Check(err)
+		x.AssertTruef(ad != wd,
+			"WAL directory and Audit output cannot be the same ('%s').", opts.audit.Output)
+	}
+
+	if opts.rebalanceInterval <= 0 {
+		log.Fatalf("ERROR: Rebalance interval must be greater than zero. Found: %d",
+			opts.rebalanceInterval)
+	}
+
+	addr := "localhost"
+	if opts.bindall {
+		addr = "0.0.0.0"
+	}
+	if x.WorkerConfig.MyAddr == "" {
+		x.WorkerConfig.MyAddr = fmt.Sprintf("localhost:%d", x.PortZeroGrpc+opts.portOffset)
+	}
+
+	nodeId := opts.raft.GetUint64("idx")
+	if nodeId == 0 {
+		log.Fatalf("ERROR: raft.idx flag cannot be 0. Please set idx to a unique positive integer.")
+	}
+
+	if opts.audit != nil {
+		if err := audit.InitAuditor(opts.audit, 0, nodeId); err != nil {
+			glog.Errorf("error while initializing audit logs %+v", err)
+		}
+	}
+
+	grpcListener, err := setupListener(addr, x.PortZeroGrpc+opts.portOffset, "grpc")
+	x.Check(err)
+	httpListener, err := setupListener(addr, x.PortZeroHTTP+opts.portOffset, "http")
+	x.Check(err)
+
+	// Create and initialize write-ahead log.
+	x.Checkf(os.MkdirAll(opts.w, 0700), "Error while creating WAL dir.")
+	store := raftwal.Init(opts.w)
+	store.SetUint(raftwal.RaftId, nodeId)
+	store.SetUint(raftwal.GroupId, 0) // All zeros have group zero.
+
+	// Initialize the servers.
+	var st state
+	st.serveGRPC(grpcListener, store)
+
+	tlsCfg, err := x.LoadServerTLSConfig(Zero.Conf)
+	x.Check(err)
+	go x.StartListenHttpAndHttps(httpListener, tlsCfg, st.zero.closer, nil)
+
+	baseMux := http.NewServeMux()
+	http.Handle("/", audit.AuditRequestHttp(baseMux))
+
+	baseMux.HandleFunc("/health", st.pingResponse)
+	// the following endpoints are disabled only if the flag is explicitly set to true.
+	// They are guarded by adminAuthHandler because they expose control-plane operations;
+	// without the guard any caller able to reach the HTTP port could invoke them. The
+	// destructive endpoints (/removeNode, /moveTablet) are always guarded (strict); the
+	// informational and allocation endpoints (/state, /assign) enforce auth only once a token
+	// or whitelist is configured via --security.
+	if !limit.GetBool("disable-admin-http") {
+		baseMux.Handle("/state", adminAuthHandler(false, http.HandlerFunc(st.getState)))
+		baseMux.Handle("/assign", adminAuthHandler(false, http.HandlerFunc(st.assign)))
+		baseMux.Handle("/removeNode", adminAuthHandler(true, http.HandlerFunc(st.removeNode)))
+		baseMux.Handle("/moveTablet", adminAuthHandler(true, http.HandlerFunc(st.moveTablet)))
+	}
+	baseMux.HandleFunc("/debug/jemalloc", x.JemallocHandler)
+	http.DefaultServeMux.Handle("/debug/z", zpages.NewTracezHandler(zpages.NewSpanProcessor()))
+
+	// This must be here. It does not work if placed before Grpc init.
+	x.Check(st.node.initAndStartNode())
+
+	if opts.telemetry.GetBool("reports") {
+		go st.zero.periodicallyPostTelemetry()
+	}
+
+	sdCh := make(chan os.Signal, 1)
+	signal.Notify(sdCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	// handle signals
+	go func() {
+		var sigCnt int
+		for sig := range sdCh {
+			glog.Infof("--- Received %s signal", sig)
+			sigCnt++
+			if sigCnt == 1 {
+				signal.Stop(sdCh)
+				st.zero.closer.Signal()
+			} else if sigCnt == 3 {
+				glog.Infof("--- Got interrupt signal 3rd time. Aborting now.")
+				os.Exit(1)
+			} else {
+				glog.Infof("--- Ignoring interrupt signal.")
+			}
+		}
+	}()
+
+	st.zero.closer.AddRunning(1)
+
+	go func() {
+		defer st.zero.closer.Done()
+		<-st.zero.closer.HasBeenClosed()
+		glog.Infoln("Shutting down...")
+		close(sdCh)
+		// Close doesn't close already opened connections.
+
+		// Stop all HTTP requests.
+		_ = httpListener.Close()
+		// Stop Raft.
+		st.node.closer.SignalAndWait()
+		// Stop all internal requests.
+		_ = grpcListener.Close()
+		// Stop all pools
+		if pools := conn.GetPools(); pools != nil {
+			pools.RemoveAll()
+		}
+	}()
+
+	st.zero.closer.AddRunning(2)
+	go x.MonitorMemoryMetrics(st.zero.closer)
+	go x.MonitorDiskMetrics("wal_fs", opts.w, st.zero.closer)
+
+	glog.Infoln("Running Dgraph Zero...")
+	st.zero.closer.Wait()
+	glog.Infoln("Closer closed.")
+
+	err = store.Close()
+	glog.Infof("Raft WAL closed with err: %v\n", err)
+
+	audit.Close()
+
+	st.zero.orc.close()
+	glog.Infoln("All done. Goodbye!")
+}

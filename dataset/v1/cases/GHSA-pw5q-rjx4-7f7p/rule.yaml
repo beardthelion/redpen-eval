@@ -1,0 +1,33 @@
+rules:
+  - id: cve-variant-sweep-GHSA-pw5q-rjx4-7f7p
+    languages: [go]
+    severity: WARNING
+    message: >-
+      User update/delete is performed without resolving the target's
+      permissions against the caller's privilege (no privilege-ordering
+      check). A holder of delegated users:update/users:delete can modify or
+      delete a global admin, including resetting an admin password for
+      account takeover (variant of GHSA-pw5q-rjx4-7f7p / CVE-2026-96627).
+    metadata:
+      ghsa_id: GHSA-pw5q-rjx4-7f7p
+      cve: CVE-2026-96627
+      ecosystem: go
+      guard_class: auth-check
+      engine: semgrep
+      date: "2026-10-19"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-either:
+          - pattern: |
+              func $H(...) {
+                ...
+                $SVC.UpdateUser(...)
+                ...
+              }
+          - pattern: |
+              func $H(...) {
+                ...
+                $SVC.DeleteUser(...)
+                ...
+              }
+      - pattern-not-regex: (?s)ResolveUserPermissions|checkTargetPrivilege|ErrInsufficientPrivilege

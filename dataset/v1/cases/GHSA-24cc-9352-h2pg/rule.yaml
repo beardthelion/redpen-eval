@@ -1,0 +1,22 @@
+rules:
+  - id: cve-variant-sweep-GHSA-24cc-9352-h2pg
+    languages: [python]
+    severity: WARNING
+    message: >-
+      _traverse_atoms parses MP4 atom sizes with unpack_from and never
+      validates them against the header length. A crafted invalid atom size
+      sends the parser into an infinite loop (variant of
+      GHSA-24cc-9352-h2pg / CVE-2026-104266).
+    metadata:
+      ghsa_id: GHSA-24cc-9352-h2pg
+      cve: CVE-2026-104266
+      ecosystem: pip
+      guard_class: type-range-check
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-inside: |
+          def _traverse_atoms(...):
+            ...
+      - pattern: atom_size = unpack_from('>I', atom_header)[0]

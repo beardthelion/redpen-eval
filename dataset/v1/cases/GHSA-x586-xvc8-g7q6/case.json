@@ -1,0 +1,74 @@
+{
+  "case_id": "GHSA-x586-xvc8-g7q6",
+  "copyright_notice": "Copyright (c) 2024 QwikDev",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-84994",
+  "cve_published_at": "2026-10-15T20:22:00Z",
+  "ecosystem": "npm",
+  "fix_commit_date": "2026-05-21T09:57:20+02:00",
+  "fixed": {
+    "file": "fixed/serializers.ts",
+    "header_lines": 5,
+    "original_line_count": 736,
+    "segments": [
+      {
+        "end": 736,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "c1e7444402f9592b5cf9096e10bf303ab4640511",
+  "guard_class": "type-range-check",
+  "language": "typescript",
+  "license_dir": "licenses/QwikDev__qwik",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/QwikDev/qwik",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "1fe1073bdfb5e2cfc370ec0643afaa861166e0c3752fea92e5008d296d49ac7e",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "packages/qwik/src/core/container/serializers.ts",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 182,
+        "source": "semgrep",
+        "start": 181
+      },
+      {
+        "end": 114,
+        "source": "fix_diff",
+        "start": 113
+      },
+      {
+        "end": 182,
+        "source": "fix_diff",
+        "start": 182
+      },
+      {
+        "end": 185,
+        "source": "fix_diff",
+        "start": 184
+      },
+      {
+        "end": 187,
+        "source": "fix_diff",
+        "start": 187
+      }
+    ],
+    "file": "vuln/serializers.ts",
+    "header_lines": 5,
+    "location_selectivity": 0.04073033707865169,
+    "original_line_count": 712,
+    "segments": [
+      {
+        "end": 712,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "ResourceSerializer fills a deserialized resource value into a promise without checking for thenables. An attacker-supplied thenable has its `then` invoked during resume, crashing or hijacking the server (variant of GHSA-x586-xvc8-g7q6 / CVE-2026-84994).",
+  "vuln_ref": "eb381ba48fcb76ab9f72d6fb5eab49504cb5d9a3",
+  "window_mode": "whole_file"
+}

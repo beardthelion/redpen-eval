@@ -1,0 +1,24 @@
+rules:
+  - id: cve-variant-sweep-GHSA-23vg-4cjm-66q5
+    languages: [go]
+    severity: WARNING
+    message: >-
+      validateRequest validates the decoded request path without checking
+      for encoded path separators that resolve to a different operation.
+      Security requirements of the validated operation may not match the
+      operation actually served (variant of GHSA-23vg-4cjm-66q5 /
+      CVE-2026-100351).
+    metadata:
+      ghsa_id: GHSA-23vg-4cjm-66q5
+      cve: CVE-2026-100351
+      ecosystem: go
+      guard_class: input-validation
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func (h *ValidationHandler) validateRequest(r *http.Request) error {
+            ...
+          }
+      - pattern-not-regex: (?s)checkEncodedPathSeparator

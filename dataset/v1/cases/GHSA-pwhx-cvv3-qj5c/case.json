@@ -1,0 +1,74 @@
+{
+  "case_id": "GHSA-pwhx-cvv3-qj5c",
+  "copyright_notice": "Copyright the tinacms/tinacms contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-108259",
+  "cve_published_at": "2026-10-09T20:56:52Z",
+  "ecosystem": "npm",
+  "fix_commit_date": "2026-09-14T03:49:07+00:00",
+  "fixed": {
+    "file": "fixed/index.ts",
+    "header_lines": 5,
+    "original_line_count": 443,
+    "segments": [
+      {
+        "end": 416,
+        "start": 14
+      }
+    ]
+  },
+  "fixed_ref": "d030d414d39e15de79bf36e4c728d57205e71dde",
+  "guard_class": "escaping-encoding",
+  "language": "typescript",
+  "license_dir": "licenses/tinacms__tinacms",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/tinacms/tinacms",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "6f6be724803cf1ed7311a96fd7c5ed26ef431cb480cbb277b860a60b519e2629",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "packages/@tinacms/cli/src/next/codegen/index.ts",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 372,
+        "source": "semgrep",
+        "start": 372
+      },
+      {
+        "end": 376,
+        "source": "semgrep",
+        "start": 376
+      },
+      {
+        "end": 377,
+        "source": "semgrep",
+        "start": 377
+      },
+      {
+        "end": 374,
+        "source": "fix_diff",
+        "start": 372
+      },
+      {
+        "end": 377,
+        "source": "fix_diff",
+        "start": 376
+      }
+    ],
+    "file": "vuln/index.ts",
+    "header_lines": 5,
+    "location_selectivity": 0.040100250626566414,
+    "original_line_count": 439,
+    "segments": [
+      {
+        "end": 412,
+        "start": 14
+      }
+    ],
+    "semgrep_match_count": 5
+  },
+  "vuln_description": "Value interpolated raw between quotes inside a generated-code template literal. Emit JS literals via JSON.stringify instead (variant of GHSA-pwhx-cvv3-qj5c / CVE-2026-108259).",
+  "vuln_ref": "df351832c37fd0efaf5a06cb6cde9a5ec404201e",
+  "window_mode": "trimmed"
+}

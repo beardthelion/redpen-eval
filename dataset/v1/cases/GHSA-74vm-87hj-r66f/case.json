@@ -1,0 +1,59 @@
+{
+  "case_id": "GHSA-74vm-87hj-r66f",
+  "copyright_notice": "Copyright (c) 2017-2018 the project authors.",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-100349",
+  "cve_published_at": "2026-10-16T19:58:46Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-08-03T12:58:07+02:00",
+  "fixed": {
+    "file": "fixed/req_resp_decoder.go",
+    "header_lines": 5,
+    "original_line_count": 1736,
+    "segments": [
+      {
+        "end": 367,
+        "start": 270
+      }
+    ]
+  },
+  "fixed_ref": "f5441d67f855ed34d975b3b85665764644ab1459",
+  "guard_class": "input-validation",
+  "language": "go",
+  "license_dir": "licenses/getkin__kin-openapi",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "bcdd97e543e195f494224f8af2717b6851a480b63a95001969b758654327f11b",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "openapi3filter/req_resp_decoder.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 363,
+        "source": "semgrep",
+        "start": 270
+      },
+      {
+        "end": 273,
+        "source": "fix_diff",
+        "start": 272
+      }
+    ],
+    "file": "vuln/req_resp_decoder.go",
+    "header_lines": 5,
+    "location_selectivity": 1.0,
+    "original_line_count": 1732,
+    "segments": [
+      {
+        "end": 363,
+        "start": 270
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "decodeValue dereferences the schema parameter (schema.Value) without a nil check. A response-header spec whose content schema is nil causes a nil-pointer panic and crashes the process (variant of GHSA-74vm-87hj-r66f / CVE-2026-100349).",
+  "vuln_ref": "d090e36b2f1c42c898ba2a687a8f6e25f5ca727f",
+  "window_mode": "trimmed"
+}

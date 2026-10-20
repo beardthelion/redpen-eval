@@ -1,0 +1,64 @@
+{
+  "case_id": "GHSA-v75v-6fpf-gvw8",
+  "copyright_notice": "Copyright 2019 The Vitess Authors.",
+  "copyright_source": "sink_file",
+  "cve": "CVE-2026-104252",
+  "cve_published_at": "2026-10-15T20:16:29Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-06-09T21:01:56+02:00",
+  "fixed": {
+    "file": "fixed/twopcz.go",
+    "header_lines": 5,
+    "original_line_count": 215,
+    "segments": [
+      {
+        "end": 215,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "3140c1846cd120db34f33b2083139b4ab638aed2",
+  "guard_class": "escaping-encoding",
+  "language": "go",
+  "license_dir": "licenses/vitessio__vitess",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/vitessio/vitess",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "43f500c4abf087236b69576908cf247d75ba39626fe1f4d0c1c8557cd494f62d",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "go/vt/vttablet/tabletserver/twopcz.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 185,
+        "source": "semgrep",
+        "start": 185
+      },
+      {
+        "end": 22,
+        "source": "fix_diff",
+        "start": 21
+      },
+      {
+        "end": 185,
+        "source": "fix_diff",
+        "start": 185
+      }
+    ],
+    "file": "vuln/twopcz.go",
+    "header_lines": 5,
+    "location_selectivity": 0.10747663551401869,
+    "original_line_count": 214,
+    "segments": [
+      {
+        "end": 214,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "twopczHandler writes the reflected Action/dtid message to the HTML response without escaping. A crafted request injects markup into the debug page (reflected XSS variant of GHSA-v75v-6fpf-gvw8 / CVE-2026-104252).",
+  "vuln_ref": "2b93feb45f35b8612f502cb72169dc3f79d6d4c8",
+  "window_mode": "whole_file"
+}

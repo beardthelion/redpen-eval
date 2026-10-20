@@ -1,0 +1,94 @@
+{
+  "case_id": "GHSA-g8cf-rcjf-c8cf",
+  "copyright_notice": "Copyright (c) 2017-2018 the project authors.",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-100354",
+  "cve_published_at": "2026-10-15T20:20:37Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-08-28T10:37:55+02:00",
+  "fixed": {
+    "file": "fixed/req_resp_decoder.go",
+    "header_lines": 5,
+    "original_line_count": 1762,
+    "segments": [
+      {
+        "end": 1762,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "9245cef66c840e27a08409a8a5cd0ee930c5bcff",
+  "guard_class": "size-cap",
+  "language": "go",
+  "license_dir": "licenses/getkin__kin-openapi",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "2832d234811f06c3267409a56b6258a06d55d986fe32c72ad28e3c0d745df5cc",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "openapi3filter/req_resp_decoder.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 282,
+        "source": "semgrep",
+        "start": 282
+      },
+      {
+        "end": 293,
+        "source": "semgrep",
+        "start": 293
+      },
+      {
+        "end": 309,
+        "source": "semgrep",
+        "start": 309
+      },
+      {
+        "end": 270,
+        "source": "fix_diff",
+        "start": 269
+      },
+      {
+        "end": 271,
+        "source": "fix_diff",
+        "start": 270
+      },
+      {
+        "end": 276,
+        "source": "fix_diff",
+        "start": 275
+      },
+      {
+        "end": 282,
+        "source": "fix_diff",
+        "start": 282
+      },
+      {
+        "end": 293,
+        "source": "fix_diff",
+        "start": 293
+      },
+      {
+        "end": 309,
+        "source": "fix_diff",
+        "start": 309
+      }
+    ],
+    "file": "vuln/req_resp_decoder.go",
+    "header_lines": 5,
+    "location_selectivity": 0.026255707762557076,
+    "original_line_count": 1752,
+    "segments": [
+      {
+        "end": 1752,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 3
+  },
+  "vuln_description": "decodeValue recurses into allOf/anyOf/oneOf subschemas without cycle detection. A circular schema exhausts the goroutine stack and crashes the process (variant of GHSA-g8cf-rcjf-c8cf / CVE-2026-100354).",
+  "vuln_ref": "4487f198ab8be0c37d6ca72c54f5dca4dc25270e",
+  "window_mode": "whole_file"
+}

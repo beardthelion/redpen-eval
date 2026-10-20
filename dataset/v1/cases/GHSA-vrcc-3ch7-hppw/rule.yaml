@@ -1,0 +1,22 @@
+rules:
+  - id: cve-variant-sweep-GHSA-vrcc-3ch7-hppw
+    languages: [go]
+    severity: WARNING
+    message: >-
+      parseArray dereferences schemaRef.Value.Items without a nil check. An
+      array schema with no items panics the request-serving goroutine
+      (variant of GHSA-vrcc-3ch7-hppw / CVE-2026-100353).
+    metadata:
+      ghsa_id: GHSA-vrcc-3ch7-hppw
+      cve: CVE-2026-100353
+      ecosystem: go
+      guard_class: input-validation
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func (d *urlValuesDecoder) parseArray(...) (...) {
+            ...
+          }
+      - pattern-not-regex: (?s)schemaRef\.Value\.Items == nil

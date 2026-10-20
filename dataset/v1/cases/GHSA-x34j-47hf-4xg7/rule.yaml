@@ -1,0 +1,26 @@
+rules:
+  - id: cve-variant-sweep-GHSA-x34j-47hf-4xg7
+    languages: [typescript]
+    severity: WARNING
+    mode: taint
+    message: >-
+      Trust anchor for the preview origin is derived from a URL-supplied value.
+      Derive it from the admin's own origin instead (variant of
+      GHSA-x34j-47hf-4xg7 / CVE-2026-108261).
+    metadata:
+      ghsa_id: GHSA-x34j-47hf-4xg7
+      cve: CVE-2026-108261
+      ecosystem: npm
+      guard_class: allowlist-denylist
+      engine: semgrep
+      date: "2026-10-14"
+      author: cve-variant-sweep
+    pattern-sources:
+      - patterns:
+          - pattern: |
+              getExpectedPreviewOrigin = ($URL, ...) => {
+                ...
+              }
+          - focus-metavariable: $URL
+    pattern-sinks:
+      - pattern: new URL($U, ...).origin

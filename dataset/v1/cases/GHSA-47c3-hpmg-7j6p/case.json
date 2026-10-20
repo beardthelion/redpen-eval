@@ -1,0 +1,69 @@
+{
+  "case_id": "GHSA-47c3-hpmg-7j6p",
+  "copyright_notice": "Copyright (c) 2023 Posit Software, PBC",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-108258",
+  "cve_published_at": "2026-10-09T20:56:37Z",
+  "ecosystem": "pip",
+  "fix_commit_date": "2026-07-28T14:23:42-04:00",
+  "fixed": {
+    "file": "fixed/_bookmark_state.py",
+    "header_lines": 5,
+    "original_line_count": 38,
+    "segments": [
+      {
+        "end": 30,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "1d8ecb46cbc9621b7dc8812111d26692e086b376",
+  "guard_class": "input-validation",
+  "language": "python",
+  "license_dir": "licenses/posit-dev__py-shiny",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/posit-dev/py-shiny",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "f3396025cd8dd9360465c294bd65cac8e9c0c00a011c869bef2ed4d93a098d52",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "shiny/bookmark/_bookmark_state.py",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 12,
+        "source": "semgrep",
+        "start": 12
+      },
+      {
+        "end": 4,
+        "source": "fix_diff",
+        "start": 3
+      },
+      {
+        "end": 8,
+        "source": "fix_diff",
+        "start": 7
+      },
+      {
+        "end": 11,
+        "source": "fix_diff",
+        "start": 10
+      }
+    ],
+    "file": "vuln/_bookmark_state.py",
+    "header_lines": 5,
+    "location_selectivity": 1.0,
+    "original_line_count": 22,
+    "segments": [
+      {
+        "end": 12,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "Client-supplied id joined into a filesystem path in _local_dir without validate_bookmark_id. Path segments from the client must be allowlisted before Path() joins (variant of GHSA-47c3-hpmg-7j6p / CVE-2026-108258).",
+  "vuln_ref": "48b4faa0d651476afa84d6423d57503b60716902",
+  "window_mode": "trimmed"
+}

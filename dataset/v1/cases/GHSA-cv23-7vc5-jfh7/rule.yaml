@@ -1,0 +1,27 @@
+rules:
+  - id: cve-variant-sweep-GHSA-cv23-7vc5-jfh7
+    languages: [go]
+    severity: WARNING
+    message: >-
+      A slice is taken with a bound derived from another value's length
+      ($X[:$N] where $N comes from len()) with no less-than length guard in
+      the function. When the sliced value is shorter than the bound, this
+      panics; check lengths before slicing (variant of GHSA-cv23-7vc5-jfh7).
+    metadata:
+      ghsa_id: GHSA-cv23-7vc5-jfh7
+      cve: CVE-2026-102941
+      ecosystem: go
+      guard_class: type-range-check
+      engine: semgrep
+      date: "2026-10-19"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func $F(...) {
+            ...
+            $N := len($Y)
+            ...
+            $L := $X[:$N]
+            ...
+          }
+      - pattern-not-regex: (?s)if\s+\w+\s*<\s*\w+

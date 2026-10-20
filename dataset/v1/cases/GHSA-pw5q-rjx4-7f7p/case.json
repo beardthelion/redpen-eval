@@ -1,0 +1,113 @@
+{
+  "case_id": "GHSA-pw5q-rjx4-7f7p",
+  "copyright_notice": "Copyright (c) 2025, Kyle Mendell",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-96627",
+  "cve_published_at": "2026-10-16T21:15:03Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-07-29T12:18:13-05:00",
+  "fixed": {
+    "file": "fixed/users.go",
+    "header_lines": 5,
+    "original_line_count": 419,
+    "segments": [
+      {
+        "end": 336,
+        "start": 251
+      },
+      {
+        "end": 380,
+        "start": 339
+      }
+    ]
+  },
+  "fixed_ref": "21ea962f86d967dac8ae02a050f6e5f043d10fa1",
+  "guard_class": "auth-check",
+  "language": "go",
+  "license_dir": "licenses/getarcaneapp__arcane",
+  "license_spdx": "BSD-3-Clause",
+  "repo_url": "https://github.com/getarcaneapp/arcane",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "aeea40b379b9980d6908d63a433507d5115356de27ed4d068d81d49c9dfd1b4c",
+  "schema_version": 1,
+  "semgrep_warnings": [
+    {
+      "level": "warn",
+      "side": "vuln",
+      "type": "PartialParsing",
+      "window_lines": [
+        [
+          42,
+          42
+        ],
+        [
+          44,
+          44
+        ]
+      ]
+    },
+    {
+      "level": "warn",
+      "side": "fixed",
+      "type": "PartialParsing",
+      "window_lines": [
+        [
+          42,
+          42
+        ],
+        [
+          47,
+          47
+        ]
+      ]
+    }
+  ],
+  "sink_path": "backend/api/handlers/users.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 315,
+        "source": "semgrep",
+        "start": 251
+      },
+      {
+        "end": 341,
+        "source": "semgrep",
+        "start": 318
+      },
+      {
+        "end": 289,
+        "source": "fix_diff",
+        "start": 289
+      },
+      {
+        "end": 291,
+        "source": "fix_diff",
+        "start": 290
+      },
+      {
+        "end": 319,
+        "source": "fix_diff",
+        "start": 319
+      }
+    ],
+    "file": "vuln/users.go",
+    "header_lines": 5,
+    "location_selectivity": 1.0,
+    "original_line_count": 380,
+    "segments": [
+      {
+        "end": 315,
+        "start": 251
+      },
+      {
+        "end": 341,
+        "start": 318
+      }
+    ],
+    "semgrep_match_count": 2
+  },
+  "vuln_description": "User update/delete is performed without resolving the target's permissions against the caller's privilege (no privilege-ordering check). A holder of delegated users:update/users:delete can modify or delete a global admin, including resetting an admin password for account takeover (variant of GHSA-pw5q-rjx4-7f7p / CVE-2026-96627).",
+  "vuln_ref": "97b9e9c83053ee9d78d23a4bf572defb19665721",
+  "window_mode": "trimmed"
+}

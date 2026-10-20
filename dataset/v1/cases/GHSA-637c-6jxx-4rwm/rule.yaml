@@ -1,0 +1,24 @@
+rules:
+  - id: cve-variant-sweep-GHSA-637c-6jxx-4rwm
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Vault authentication silently defaults to the operator's Kubernetes
+      service-account token file. A leaked token grants Kubernetes API
+      access from tenant-controlled Vault destinations (variant of
+      GHSA-637c-6jxx-4rwm / CVE-2026-77524).
+    metadata:
+      ghsa_id: GHSA-637c-6jxx-4rwm
+      cve: CVE-2026-77524
+      ecosystem: go
+      guard_class: allowlist-denylist
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-inside: |
+          func (vh *HashicorpVaultHandler) token(...) (string, error) {
+            ...
+          }
+      - pattern: |
+          vh.vault.Credential = &defaultCred

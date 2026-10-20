@@ -1,0 +1,69 @@
+{
+  "case_id": "GHSA-x34j-47hf-4xg7",
+  "copyright_notice": "Copyright the tinacms/tinacms contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-108261",
+  "cve_published_at": "2026-10-09T20:56:48Z",
+  "ecosystem": "npm",
+  "fix_commit_date": "2026-09-08T06:26:37+00:00",
+  "fixed": {
+    "file": "fixed/preview-origin.ts",
+    "header_lines": 5,
+    "original_line_count": 53,
+    "segments": [
+      {
+        "end": 53,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "b57dbf4b56201aef15cd92caa49fd12ab96bbecf",
+  "guard_class": "allowlist-denylist",
+  "language": "typescript",
+  "license_dir": "licenses/tinacms__tinacms",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/tinacms/tinacms",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "e8e0ae595a0bc4fcc87762ee1bd47bf8211ae50fa7bd5f165988383086fb56d5",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "packages/@tinacms/app/src/lib/preview-origin.ts",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 22,
+        "source": "semgrep",
+        "start": 22
+      },
+      {
+        "end": 10,
+        "source": "fix_diff",
+        "start": 10
+      },
+      {
+        "end": 13,
+        "source": "fix_diff",
+        "start": 12
+      },
+      {
+        "end": 26,
+        "source": "fix_diff",
+        "start": 15
+      }
+    ],
+    "file": "vuln/preview-origin.ts",
+    "header_lines": 5,
+    "location_selectivity": 0.4426229508196721,
+    "original_line_count": 61,
+    "segments": [
+      {
+        "end": 61,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "Trust anchor for the preview origin is derived from a URL-supplied value. Derive it from the admin's own origin instead (variant of GHSA-x34j-47hf-4xg7 / CVE-2026-108261).",
+  "vuln_ref": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+  "window_mode": "whole_file"
+}

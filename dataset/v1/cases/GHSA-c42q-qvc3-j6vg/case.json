@@ -1,0 +1,69 @@
+{
+  "case_id": "GHSA-c42q-qvc3-j6vg",
+  "copyright_notice": "Copyright the tinacms/tinacms contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-108260",
+  "cve_published_at": "2026-10-09T20:56:45Z",
+  "ecosystem": "npm",
+  "fix_commit_date": "2026-09-08T16:13:24+10:00",
+  "fixed": {
+    "file": "fixed/tina-markdown.js",
+    "header_lines": 5,
+    "original_line_count": 180,
+    "segments": [
+      {
+        "end": 180,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+  "guard_class": "escaping-encoding",
+  "language": "javascript",
+  "license_dir": "licenses/tinacms__tinacms",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/tinacms/tinacms",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "a1155b5881d4d7485c7e85e86867b6ba5e732ae5fb42b4ab4909638bd95b1817",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "packages/@tinacms/web-components/src/tina-markdown.js",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 75,
+        "source": "semgrep",
+        "start": 75
+      },
+      {
+        "end": 76,
+        "source": "semgrep",
+        "start": 76
+      },
+      {
+        "end": 1,
+        "source": "fix_diff",
+        "start": 1
+      },
+      {
+        "end": 76,
+        "source": "fix_diff",
+        "start": 75
+      }
+    ],
+    "file": "vuln/tina-markdown.js",
+    "header_lines": 5,
+    "location_selectivity": 0.1005586592178771,
+    "original_line_count": 179,
+    "segments": [
+      {
+        "end": 179,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 2
+  },
+  "vuln_description": "URL written to href/src without scheme sanitization. Run it through sanitizeUrl first (variant of GHSA-c42q-qvc3-j6vg / CVE-2026-108260).",
+  "vuln_ref": "60db64bf3e80550fcaf6f9c4ec79c19191c1702c",
+  "window_mode": "whole_file"
+}

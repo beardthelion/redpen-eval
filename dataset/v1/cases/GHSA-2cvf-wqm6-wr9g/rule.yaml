@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-2cvf-wqm6-wr9g
+    languages: [go]
+    severity: WARNING
+    message: >-
+      MakeContainer builds a container without first rejecting images that
+      carry the checkpoint annotation. A checkpoint image started via
+      `podman run` disables almost all sandboxing (variant of
+      GHSA-2cvf-wqm6-wr9g / CVE-2026-94603).
+    metadata:
+      ghsa_id: GHSA-2cvf-wqm6-wr9g
+      cve: CVE-2026-94603
+      ecosystem: go
+      guard_class: allowlist-denylist
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func MakeContainer(...) (...) {
+            ...
+          }
+      - pattern-not-regex: (?s)CheckpointAnnotation

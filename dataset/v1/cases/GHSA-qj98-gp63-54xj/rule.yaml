@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-qj98-gp63-54xj
+    languages: [go]
+    severity: WARNING
+    message: >-
+      Zero admin HTTP endpoints are registered with HandleFunc and no
+      authentication middleware. Any caller able to reach the HTTP port can
+      invoke destructive control-plane operations such as removeNode
+      (variant of GHSA-qj98-gp63-54xj / CVE-2026-102748).
+    metadata:
+      ghsa_id: GHSA-qj98-gp63-54xj
+      cve: CVE-2026-102748
+      ecosystem: go
+      guard_class: auth-check
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-either:
+          - pattern: baseMux.HandleFunc("/removeNode", ...)
+          - pattern: baseMux.HandleFunc("/moveTablet", ...)
+          - pattern: baseMux.HandleFunc("/assign", ...)
+          - pattern: baseMux.HandleFunc("/state", ...)

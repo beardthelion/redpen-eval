@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-fmxq-cgp8-87wp
+    languages: [go]
+    severity: WARNING
+    message: >-
+      executeHooks creates PreDelete/PostDelete hook resources without
+      enforcing AppProject destination-namespace and group/kind
+      restrictions. A tenant with Git write access can escape their project
+      boundary (variant of GHSA-fmxq-cgp8-87wp / CVE-2026-77459).
+    metadata:
+      ghsa_id: GHSA-fmxq-cgp8-87wp
+      cve: CVE-2026-77459
+      ecosystem: go
+      guard_class: auth-check
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: |
+          func (ctrl *ApplicationController) executeHooks(...) (bool, error) {
+            ...
+          }
+      - pattern-not-regex: (?s)validateSyncPermissions

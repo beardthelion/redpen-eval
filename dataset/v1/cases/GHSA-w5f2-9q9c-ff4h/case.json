@@ -1,0 +1,129 @@
+{
+  "case_id": "GHSA-w5f2-9q9c-ff4h",
+  "copyright_notice": "Copyright the LMCache/LMCache contributors",
+  "copyright_source": "fallback",
+  "cve": "CVE-2026-105192",
+  "cve_published_at": "2026-10-16T20:08:44Z",
+  "ecosystem": "pip",
+  "fix_commit_date": "2026-10-12T14:22:08+08:00",
+  "fixed": {
+    "file": "fixed/ipc_wrapper.py",
+    "header_lines": 5,
+    "original_line_count": 217,
+    "segments": [
+      {
+        "end": 217,
+        "start": 1
+      }
+    ]
+  },
+  "fixed_ref": "160b6dec469edb765efd1fad42aca5a438b08bb5",
+  "guard_class": "allowlist-denylist",
+  "language": "python",
+  "license_dir": "licenses/LMCache__LMCache",
+  "license_spdx": "Apache-2.0",
+  "repo_url": "https://github.com/LMCache/LMCache",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "a5fb215f700e7f556340d485eab6f01c59feb71690e5966b6764d481a5a7d502",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "lmcache/v1/platform/base/ipc_wrapper.py",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 169,
+        "source": "semgrep",
+        "start": 169
+      },
+      {
+        "end": 9,
+        "source": "fix_diff",
+        "start": 7
+      },
+      {
+        "end": 17,
+        "source": "fix_diff",
+        "start": 16
+      },
+      {
+        "end": 21,
+        "source": "fix_diff",
+        "start": 20
+      },
+      {
+        "end": 25,
+        "source": "fix_diff",
+        "start": 24
+      },
+      {
+        "end": 33,
+        "source": "fix_diff",
+        "start": 33
+      },
+      {
+        "end": 38,
+        "source": "fix_diff",
+        "start": 36
+      },
+      {
+        "end": 141,
+        "source": "fix_diff",
+        "start": 140
+      },
+      {
+        "end": 148,
+        "source": "fix_diff",
+        "start": 143
+      },
+      {
+        "end": 151,
+        "source": "fix_diff",
+        "start": 151
+      },
+      {
+        "end": 154,
+        "source": "fix_diff",
+        "start": 154
+      },
+      {
+        "end": 156,
+        "source": "fix_diff",
+        "start": 156
+      },
+      {
+        "end": 160,
+        "source": "fix_diff",
+        "start": 160
+      },
+      {
+        "end": 163,
+        "source": "fix_diff",
+        "start": 163
+      },
+      {
+        "end": 167,
+        "source": "fix_diff",
+        "start": 166
+      },
+      {
+        "end": 169,
+        "source": "fix_diff",
+        "start": 169
+      }
+    ],
+    "file": "vuln/ipc_wrapper.py",
+    "header_lines": 5,
+    "location_selectivity": 0.4556213017751479,
+    "original_line_count": 169,
+    "segments": [
+      {
+        "end": 169,
+        "start": 1
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "pickle.loads is used to deserialize multiprocess/IPC wire bytes. Attacker-controlled bytes reach code execution through pickle opcodes; use a data-only wire format with an allowlist of permitted types instead (variant of GHSA-w5f2-9q9c-ff4h / CVE-2026-105192).",
+  "vuln_ref": "5070f183f260258611c1252e996ad12e2cee5b7f",
+  "window_mode": "whole_file"
+}

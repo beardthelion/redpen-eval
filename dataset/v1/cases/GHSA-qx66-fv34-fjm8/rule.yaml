@@ -1,0 +1,20 @@
+rules:
+  - id: cve-variant-sweep-GHSA-qx66-fv34-fjm8
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      Server-function handler passes the raw parsed request payload to the
+      action instead of an allowlisted {data, context, method} object.
+      Attacker-controlled keys flow into the server function and can be
+      reflected into the response (XSS variant of GHSA-qx66-fv34-fjm8 /
+      CVE-2026-102989).
+    metadata:
+      ghsa_id: GHSA-qx66-fv34-fjm8
+      cve: CVE-2026-102989
+      ecosystem: npm
+      guard_class: input-validation
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern: res = await action(payload)

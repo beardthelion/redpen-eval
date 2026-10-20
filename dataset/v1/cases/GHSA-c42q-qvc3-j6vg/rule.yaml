@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-c42q-qvc3-j6vg
+    languages: [javascript]
+    severity: WARNING
+    message: >-
+      URL written to href/src without scheme sanitization. Run it through
+      sanitizeUrl first (variant of GHSA-c42q-qvc3-j6vg / CVE-2026-108260).
+    metadata:
+      ghsa_id: GHSA-c42q-qvc3-j6vg
+      cve: CVE-2026-108260
+      ecosystem: npm
+      guard_class: escaping-encoding
+      engine: semgrep
+      date: "2026-10-14"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: $EL.href = $URL
+              - pattern-not: $EL.href = sanitizeUrl(...)
+          - patterns:
+              - pattern: $EL.src = $URL
+              - pattern-not: $EL.src = sanitizeUrl(...)

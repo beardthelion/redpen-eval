@@ -1,0 +1,35 @@
+# Source: https://github.com/posit-dev/py-shiny
+# Ref: 1d8ecb46cbc9621b7dc8812111d26692e086b376 Path: shiny/bookmark/_bookmark_state.py
+# Excerpted and modified from https://github.com/posit-dev/py-shiny@1d8ecb46cbc9621b7dc8812111d26692e086b376 on 2026-10-20
+# License: MIT, see licenses/posit-dev__py-shiny/LICENSE
+# Copyright (c) 2023 Posit Software, PBC
+from __future__ import annotations
+
+import os
+import re
+from pathlib import Path
+
+shiny_bookmarks_folder_name = "shiny_bookmarks"
+
+# Allowlist for the client-supplied `_state_id_`: a single path segment that
+# can't express a separator, `..`, or an absolute path. (R uses `[a-zA-Z0-9]`;
+# `-`/`_` are allowed here for UUID/token-style ids.) (423aae3e)
+_valid_bookmark_id_re = re.compile(r"[A-Za-z0-9_-]+")
+
+# Guards only against an attacker echoing a huge id back through error/log output.
+_max_bookmark_id_length = 1024
+
+
+def validate_bookmark_id(id: str) -> None:
+    if len(id) > _max_bookmark_id_length or not _valid_bookmark_id_re.fullmatch(id):
+        raise ValueError(f"Invalid bookmark id: {id!r}")
+
+
+def _local_dir(id: str) -> Path:
+    validate_bookmark_id(id)
+    # `id` is a single safe path segment, so this join can't escape the store.
+    # Not `.resolve()`d: that would follow a symlinked per-id dir out and break
+    # stores backed by symlinked/persistent storage. (423aae3e)
+    return Path(os.getcwd()) / shiny_bookmarks_folder_name / id
+
+

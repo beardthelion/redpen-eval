@@ -1,0 +1,23 @@
+rules:
+  - id: cve-variant-sweep-GHSA-v75v-6fpf-gvw8
+    languages: [go]
+    severity: WARNING
+    message: >-
+      twopczHandler writes the reflected Action/dtid message to the HTML
+      response without escaping. A crafted request injects markup into the
+      debug page (reflected XSS variant of GHSA-v75v-6fpf-gvw8 /
+      CVE-2026-104252).
+    metadata:
+      ghsa_id: GHSA-v75v-6fpf-gvw8
+      cve: CVE-2026-104252
+      ecosystem: go
+      guard_class: escaping-encoding
+      engine: semgrep
+      date: "2026-10-16"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-inside: |
+          func twopczHandler(...) {
+            ...
+          }
+      - pattern: fmt.Fprintln(w, msg)

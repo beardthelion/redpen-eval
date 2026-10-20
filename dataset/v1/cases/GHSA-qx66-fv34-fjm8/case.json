@@ -1,0 +1,102 @@
+{
+  "case_id": "GHSA-qx66-fv34-fjm8",
+  "copyright_notice": "Copyright (c) 2021-present Tanner Linsley",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-102989",
+  "cve_published_at": "2026-10-15T20:22:20Z",
+  "ecosystem": "npm",
+  "fix_commit_date": "2026-09-30T11:29:54-06:00",
+  "fixed": {
+    "file": "fixed/server-functions-handler.ts",
+    "header_lines": 5,
+    "original_line_count": 535,
+    "segments": [
+      {
+        "end": 240,
+        "start": 69
+      },
+      {
+        "end": 535,
+        "start": 527
+      }
+    ]
+  },
+  "fixed_ref": "d521abd71c69f1ff010bb3def4d417cb5fa058cb",
+  "guard_class": "input-validation",
+  "language": "typescript",
+  "license_dir": "licenses/TanStack__router",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/TanStack/router",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "328e81f22adda6df9ae506328d53aaf601f7371d9d32171b014483ad957ac182",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "packages/start-server-core/src/server-functions-handler.ts",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 161,
+        "source": "semgrep",
+        "start": 161
+      },
+      {
+        "end": 168,
+        "source": "semgrep",
+        "start": 168
+      },
+      {
+        "end": 161,
+        "source": "fix_diff",
+        "start": 158
+      },
+      {
+        "end": 168,
+        "source": "fix_diff",
+        "start": 165
+      },
+      {
+        "end": 171,
+        "source": "fix_diff",
+        "start": 171
+      },
+      {
+        "end": 177,
+        "source": "fix_diff",
+        "start": 177
+      },
+      {
+        "end": 521,
+        "source": "fix_diff",
+        "start": 520
+      },
+      {
+        "end": 526,
+        "source": "fix_diff",
+        "start": 523
+      },
+      {
+        "end": 528,
+        "source": "fix_diff",
+        "start": 527
+      }
+    ],
+    "file": "vuln/server-functions-handler.ts",
+    "header_lines": 5,
+    "location_selectivity": 0.23563218390804597,
+    "original_line_count": 528,
+    "segments": [
+      {
+        "end": 231,
+        "start": 69
+      },
+      {
+        "end": 528,
+        "start": 518
+      }
+    ],
+    "semgrep_match_count": 2
+  },
+  "vuln_description": "Server-function handler passes the raw parsed request payload to the action instead of an allowlisted {data, context, method} object. Attacker-controlled keys flow into the server function and can be reflected into the response (XSS variant of GHSA-qx66-fv34-fjm8 / CVE-2026-102989).",
+  "vuln_ref": "614bc27034c8ec98747bf305ed41d4a619640949",
+  "window_mode": "trimmed"
+}

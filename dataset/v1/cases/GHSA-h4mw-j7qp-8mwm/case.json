@@ -1,0 +1,74 @@
+{
+  "case_id": "GHSA-h4mw-j7qp-8mwm",
+  "copyright_notice": "Copyright (c) 2025 Anthropic, PBC",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-96620",
+  "cve_published_at": "2026-10-16T19:44:37Z",
+  "ecosystem": "pip",
+  "fix_commit_date": "2026-07-15T17:59:36-07:00",
+  "fixed": {
+    "file": "fixed/subprocess_cli.py",
+    "header_lines": 5,
+    "original_line_count": 876,
+    "segments": [
+      {
+        "end": 476,
+        "start": 282
+      }
+    ]
+  },
+  "fixed_ref": "347a1cb88d7652199399db1b7f914e0a459a6662",
+  "guard_class": "escaping-encoding",
+  "language": "python",
+  "license_dir": "licenses/anthropics__claude-agent-sdk-python",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/anthropics/claude-agent-sdk-python",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "4e0a86e72897a3cc4e76c4a4ed4b6ff14803799264ecd4a8c7a831d423beb0cf",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "src/claude_agent_sdk/_internal/transport/subprocess_cli.py",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 353,
+        "source": "semgrep",
+        "start": 353
+      },
+      {
+        "end": 356,
+        "source": "semgrep",
+        "start": 356
+      },
+      {
+        "end": 352,
+        "source": "fix_diff",
+        "start": 351
+      },
+      {
+        "end": 353,
+        "source": "fix_diff",
+        "start": 353
+      },
+      {
+        "end": 356,
+        "source": "fix_diff",
+        "start": 356
+      }
+    ],
+    "file": "vuln/subprocess_cli.py",
+    "header_lines": 5,
+    "location_selectivity": 0.08421052631578947,
+    "original_line_count": 871,
+    "segments": [
+      {
+        "end": 471,
+        "start": 282
+      }
+    ],
+    "semgrep_match_count": 2
+  },
+  "vuln_description": "An optional-value CLI flag (--resume/--session-id) is passed as two argv tokens. A dash-leading value is not bound to the flag and is parsed as a separate CLI flag, letting untrusted input inject arbitrary flags; pass it as a single --flag=value token instead (variant of GHSA-h4mw-j7qp-8mwm).",
+  "vuln_ref": "af69c0125eb48978631c671d877d0a3c246d210d",
+  "window_mode": "trimmed"
+}

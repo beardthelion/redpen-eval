@@ -1,0 +1,34 @@
+rules:
+  - id: cve-variant-sweep-GHSA-74vm-87hj-r66f
+    languages: [go]
+    severity: WARNING
+    message: >-
+      decodeValue dereferences the schema parameter (schema.Value) without a
+      nil check. A response-header spec whose content schema is nil causes a
+      nil-pointer panic and crashes the process (variant of
+      GHSA-74vm-87hj-r66f / CVE-2026-100349).
+    metadata:
+      ghsa_id: GHSA-74vm-87hj-r66f
+      cve: CVE-2026-100349
+      ecosystem: go
+      guard_class: input-validation
+      engine: semgrep
+      date: "2026-10-19"
+      author: cve-variant-sweep
+    patterns:
+      - pattern-either:
+          - pattern: |
+              func decodeValue(...) {
+                ...
+                if len($S.Value.AllOf) > 0 {
+                  ...
+                }
+                ...
+              }
+          - pattern: |
+              func decodeValue(...) {
+                ...
+                $X := $S.Value
+                ...
+              }
+      - pattern-not-regex: (?s)schema\s*==\s*nil

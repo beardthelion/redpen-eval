@@ -1,0 +1,72 @@
+{
+  "case_id": "GHSA-vrcc-3ch7-hppw",
+  "copyright_notice": "Copyright (c) 2017-2018 the project authors.",
+  "copyright_source": "license_file",
+  "cve": "CVE-2026-100353",
+  "cve_published_at": "2026-10-15T20:20:47Z",
+  "ecosystem": "go",
+  "fix_commit_date": "2026-08-28T10:56:03+02:00",
+  "fixed": {
+    "file": "fixed/req_resp_decoder.go",
+    "header_lines": 5,
+    "original_line_count": 1768,
+    "segments": [
+      {
+        "end": 619,
+        "start": 590
+      },
+      {
+        "end": 1133,
+        "start": 1034
+      }
+    ]
+  },
+  "fixed_ref": "9814d1f2b212f3508bf52296aa9e248b2122a5a9",
+  "guard_class": "input-validation",
+  "language": "go",
+  "license_dir": "licenses/getkin__kin-openapi",
+  "license_spdx": "MIT",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "rule_file": "rule.yaml",
+  "rule_sha256": "8a6de0008df6ca5a20f8bb724c69ccc9d967d9cdf23588040367e44198836e9f",
+  "schema_version": 1,
+  "semgrep_warnings": [],
+  "sink_path": "openapi3filter/req_resp_decoder.go",
+  "vuln": {
+    "expected_spans": [
+      {
+        "end": 616,
+        "source": "semgrep",
+        "start": 590
+      },
+      {
+        "end": 591,
+        "source": "fix_diff",
+        "start": 590
+      },
+      {
+        "end": 1039,
+        "source": "fix_diff",
+        "start": 1038
+      }
+    ],
+    "file": "vuln/req_resp_decoder.go",
+    "header_lines": 5,
+    "location_selectivity": 0.31451612903225806,
+    "original_line_count": 1762,
+    "segments": [
+      {
+        "end": 616,
+        "start": 590
+      },
+      {
+        "end": 1127,
+        "start": 1031
+      }
+    ],
+    "semgrep_match_count": 1
+  },
+  "vuln_description": "parseArray dereferences schemaRef.Value.Items without a nil check. An array schema with no items panics the request-serving goroutine (variant of GHSA-vrcc-3ch7-hppw / CVE-2026-100353).",
+  "vuln_ref": "9245cef66c840e27a08409a8a5cd0ee930c5bcff",
+  "window_mode": "trimmed"
+}
