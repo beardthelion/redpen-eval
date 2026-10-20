@@ -68,3 +68,43 @@ def test_prompt_version_and_hash_are_stable(ds):
     a = prompts.render_review_prompt(ds[CID], "vuln")
     b = prompts.render_review_prompt(ds[CID], "vuln")
     assert a == b
+
+
+def test_numbered_window_matches_render_numbered(ds):
+    case = ds[CID]
+    expected = render_numbered(case.vuln_text, case.data["vuln"]["header_lines"],
+                               [Span(1, 1), Span(9, 13)])
+    assert prompts.numbered_window(case, "vuln") == expected
+
+
+def test_judge_version_and_schemas():
+    assert prompts.JUDGE_PROMPT_VERSION == "judge-v1"
+    assert set(prompts.JUDGE_VULN_SCHEMA["properties"]) == {
+        "verdict_class_match", "cited_ranges", "rationale"}
+    assert set(prompts.JUDGE_FIXED_SCHEMA["properties"]) == {
+        "reported_patched_vuln", "cited_ranges", "rationale"}
+    for schema in (prompts.JUDGE_VULN_SCHEMA, prompts.JUDGE_FIXED_SCHEMA):
+        assert schema["additionalProperties"] is False
+        assert set(schema["required"]) == set(schema["properties"])
+
+
+@pytest.mark.parametrize("name", ["JUDGE_VULN_PROMPT", "JUDGE_FIXED_PROMPT", "JUDGE_REPAIR_PROMPT"])
+def test_judge_sha256_covers_each_template(monkeypatch, name):
+    before = prompts.judge_prompt_sha256()
+    monkeypatch.setattr(prompts, name, getattr(prompts, name) + " ")
+    assert prompts.judge_prompt_sha256() != before
+
+
+@pytest.mark.parametrize("name", ["JUDGE_VULN_SCHEMA", "JUDGE_FIXED_SCHEMA"])
+def test_judge_sha256_covers_each_schema(monkeypatch, name):
+    before = prompts.judge_prompt_sha256()
+    monkeypatch.setattr(prompts, name, dict(getattr(prompts, name), title="changed"))
+    assert prompts.judge_prompt_sha256() != before
+
+
+@pytest.mark.parametrize("name", ["JUDGE_VULN_PROMPT", "JUDGE_FIXED_PROMPT"])
+def test_judge_templates_carry_nonce_delimiters(name):
+    text = getattr(prompts, name)
+    for tag in ("<code-{nonce}>", "</code-{nonce}>", "<review-{nonce}>", "</review-{nonce}>"):
+        assert tag in text
+    assert "{guard_class}" in text and "{vuln_description}" in text

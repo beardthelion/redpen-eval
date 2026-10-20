@@ -11,11 +11,15 @@ from pathlib import Path
 
 from redpen.config import load_config
 from redpen.dataset import load_dataset
-from redpen.prompts import REVIEW_PROMPT, REVIEW_PROMPT_VERSION, prompt_sha256, render_review_prompt
+from redpen import scorer
+from redpen.judge import JudgeRequest, judge_side, make_judge_backend
+from redpen.prompts import (JUDGE_PROMPT_VERSION, REVIEW_PROMPT, REVIEW_PROMPT_VERSION,
+                            judge_prompt_sha256, numbered_window, prompt_sha256,
+                            render_review_prompt)
 from redpen.reviewers import ReviewerError, ReviewRequest, make_reviewer
 from redpen.util import atomic_write_json, canonical_json, sha256_bytes, utc_now_iso, utc_stamp
 
-SCORING = {"formula": "pair-v1", "location_tolerance": 5,
+SCORING = {"formula": "pair-v1", "location_tolerance": scorer.LOCATION_TOLERANCE,
            "bootstrap_resamples": 1000, "bootstrap_seed": 0}
 ERROR_STATUSES = {"reviewer_error", "judge_error"}
 SIDES = ("vuln", "fixed")
@@ -59,7 +63,7 @@ def _identity(name: str, entry: dict, fields: tuple) -> dict:
     return out
 
 
-def _review_side(reviewer, case, side: str) -> dict:
+def _review_side(reviewer, judge, tier: str, case, side: str) -> dict:
     rec = {"status": None, "review_text": None, "review_error": None, "response_meta": {},
            "judge": None}
     try:
@@ -69,9 +73,7 @@ def _review_side(reviewer, case, side: str) -> dict:
         rec.update(status=status, review_error={"kind": exc.kind, "message": exc.message})
     else:
         rec.update(review_text=result.text, response_meta=result.meta)
-        if result.text.strip():
-            rec["status"] = "reviewed"
-        else:
+        if not result.text.strip():
             rec.update(status="no_answer",
                        review_error={"kind": "empty_output", "message": "reviewer returned no text"})
     if side == "vuln":
@@ -79,14 +81,30 @@ def _review_side(reviewer, case, side: str) -> dict:
         rec["verdict"] = "MISS" if rec["status"] == "no_answer" else None
     else:
         rec["fixed_clean"] = None
+    if rec["status"] is not None:
+        return rec
+
+    outcome = judge_side(judge, JudgeRequest(case, side, numbered_window(case, side),
+                                             rec["review_text"]), tier)
+    rec["judge"] = outcome.to_dict()
+    if outcome.status != "ok":
+        rec["status"] = "judge_error"
+        return rec
+    rec["status"] = "scored"
+    if side == "vuln":
+        spans = case.data["vuln"]["expected_spans"]
+        rec["location_match"] = scorer.located(outcome.parsed["cited_ranges"], spans)
+        rec["verdict"] = scorer.vuln_verdict(outcome.parsed, spans)
+    else:
+        rec["fixed_clean"] = scorer.fixed_clean(outcome.parsed)
     return rec
 
 
-def _run_case(reviewer, case, cases_dir: Path) -> None:
+def _run_case(reviewer, judge, tier: str, case, cases_dir: Path) -> None:
     rec = {"case_id": case.case_id, "guard_class": case.guard_class}
     for side in SIDES:
-        rec[side] = _review_side(reviewer, case, side)
-    rec["pair_credit"] = None
+        rec[side] = _review_side(reviewer, judge, tier, case, side)
+    rec["pair_credit"] = scorer.pair_credit(rec["vuln"], rec["fixed"])
     atomic_write_json(cases_dir / f"{case.case_id}.json", rec)
 
 
@@ -128,6 +146,8 @@ def run(reviewer_name: str, judge_name: str | None, cases_spec: str | None, data
         print(f"warning: reviewer and judge use the same model ({r_entry.get('model')})",
               file=sys.stderr)
     reviewer = make_reviewer(reviewer_name, config)
+    judge = make_judge_backend(judge_name, config)
+    tier = j_entry.get("structured_output", "json_schema")
     dataset = load_dataset(dataset_path)
     if concurrency < 1:
         raise RunError("--concurrency must be at least 1")
@@ -138,7 +158,7 @@ def run(reviewer_name: str, judge_name: str | None, cases_spec: str | None, data
                                                "structured_output"))
     prompts = {"review_version": REVIEW_PROMPT_VERSION,
                "review_sha256": prompt_sha256(REVIEW_PROMPT),
-               "judge_version": None, "judge_sha256": None}
+               "judge_version": JUDGE_PROMPT_VERSION, "judge_sha256": judge_prompt_sha256()}
     case_set = dataset.manifest["case_set_sha256"]
     results_dir = Path(results_dir)
 
@@ -188,7 +208,7 @@ def run(reviewer_name: str, judge_name: str | None, cases_spec: str | None, data
     by_id = {c.case_id: c for c in dataset.cases}
     todo = [by_id[cid] for cid in case_ids if _needs_run(cases_dir / f"{cid}.json")]
     with ThreadPoolExecutor(max_workers=concurrency) as pool:
-        for future in [pool.submit(_run_case, reviewer, case, cases_dir) for case in todo]:
+        for future in [pool.submit(_run_case, reviewer, judge, tier, case, cases_dir) for case in todo]:
             future.result()
 
     counts = _count(run_dir, case_ids)

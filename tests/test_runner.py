@@ -6,6 +6,8 @@ import yaml
 
 from conftest import make_dataset
 from redpen.cli import main
+from redpen.judge import MockJudgeBackend
+from redpen.prompts import judge_prompt_sha256
 from redpen.reviewers.mock import MockReviewer
 
 CASES = [
@@ -38,6 +40,13 @@ def env(tmp_path):
     cfg = write_config(tmp_path, base_config())
     results = tmp_path / "results"
     return ds, cfg, results
+
+
+def patch_judge(monkeypatch):
+    """Stand in a mock judge backend for an openai_compat judge entry (adapter lands in U11)."""
+    from redpen import runner
+    monkeypatch.setattr(runner, "make_judge_backend",
+                        lambda name, config: MockJudgeBackend({"adapter": "mock"}))
 
 
 def run(ds, cfg, results, *extra):
@@ -83,6 +92,8 @@ def test_happy_path_writes_meta_and_case_files(env, capsys):
     assert meta["dataset"]["case_set_sha256"] == manifest["case_set_sha256"]
     assert meta["prompts"]["review_version"] == "review-v1"
     assert len(meta["prompts"]["review_sha256"]) == 64
+    assert meta["prompts"]["judge_version"] == "judge-v1"
+    assert meta["prompts"]["judge_sha256"] == judge_prompt_sha256()
     assert meta["scoring"] == {"formula": "pair-v1", "location_tolerance": 5,
                                "bootstrap_resamples": 1000, "bootstrap_seed": 0}
     assert meta["harness"]["redpen_version"] == "0.1.0"
@@ -90,12 +101,20 @@ def test_happy_path_writes_meta_and_case_files(env, capsys):
     assert files == ALL_IDS
     rec = load(rd / "cases" / f"{ALL_IDS[0]}.json")
     assert rec["case_id"] == ALL_IDS[0]
-    assert rec["vuln"]["status"] == "reviewed"
+    assert rec["vuln"]["status"] == "scored"
     assert rec["vuln"]["review_text"].startswith("FINDING:")
-    assert rec["vuln"]["judge"] is None and rec["vuln"]["verdict"] is None
-    assert rec["fixed"]["status"] == "reviewed"
+    judge = rec["vuln"]["judge"]
+    assert judge["status"] == "ok" and judge["tier"] == "json_schema"
+    assert judge["repaired"] is False and judge["error"] is None
+    assert judge["parsed"]["verdict_class_match"] is True
+    assert judge["parsed"]["cited_ranges"] == [{"start": 11, "end": 11}]
+    assert set(judge["response_meta"]) == {"model", "system_fingerprint", "finish_reason", "usage"}
+    assert isinstance(judge["raw"], str)
+    assert rec["vuln"]["verdict"] == "HIT" and rec["vuln"]["location_match"] is True
+    assert rec["fixed"]["status"] == "scored"
     assert rec["fixed"]["review_text"] == "No security vulnerabilities found."
-    assert rec["fixed"]["fixed_clean"] is None and rec["pair_credit"] is None
+    assert rec["fixed"]["judge"]["parsed"]["reported_patched_vuln"] is False
+    assert rec["fixed"]["fixed_clean"] is True and rec["pair_credit"] == 1.0
     out = capsys.readouterr().out
     assert f"run {rd.name}: 3/3 cases, reviewer errors 0, judge errors 0" in out
     assert f"results: {rd}" in out
@@ -159,7 +178,8 @@ def test_reviewer_error_on_one_side(env, tmp_path):
     assert rec["vuln"]["status"] == "reviewer_error"
     assert rec["vuln"]["review_error"]["kind"] == "http_error"
     assert rec["vuln"]["verdict"] is None
-    assert rec["fixed"]["status"] == "reviewed"
+    assert rec["fixed"]["status"] == "scored"
+    assert rec["pair_credit"] is None
     meta = load(rd / "meta.json")
     assert meta["complete"] is True
     assert meta["counts"]["reviewer_errors"] == 1
@@ -274,6 +294,7 @@ def test_must_not_secret_never_written(env, tmp_path, monkeypatch):
     cfg_dict["judges"]["llm"] = {"adapter": "openai_compat", "base_url": "http://judge.invalid",
                                  "model": "judge-model", "api_key_env": "REDPEN_TEST_KEY"}
     cfg = write_config(tmp_path, cfg_dict)
+    patch_judge(monkeypatch)
     assert run(ds, cfg, results, "--judge", "llm") == 0
     rd = only_run(results)
     files = [p for p in rd.rglob("*") if p.is_file()]
@@ -294,6 +315,7 @@ def test_same_model_warning(env, tmp_path, monkeypatch, capsys):
     cfg = write_config(tmp_path, cfg_dict)
     monkeypatch.setattr(runner, "make_reviewer",
                         lambda name, config: MockReviewer(name, {"adapter": "mock"}))
+    patch_judge(monkeypatch)
     argv = ["run", "--reviewer", "oa", "--judge", "llm", "--dataset", str(ds), "--config",
             str(cfg), "--results-dir", str(results), "--cases", "j3hg"]
     assert main(argv) == 0
@@ -306,3 +328,98 @@ def test_no_tmp_files_remain(env):
     rd = only_run(results)
     assert list((rd / "cases").glob("*.tmp")) == []
     assert list(rd.glob("*.tmp")) == []
+
+
+MIXED = {
+    # case id: (vuln mode, fixed mode, vuln status, verdict, fixed status, fixed_clean, pair)
+    "GHSA-mx01-0000-0000": ("hit", "clean", "scored", "HIT", "scored", True, 1.0),
+    "GHSA-mx02-0000-0000": ("partial", "clean", "scored", "PARTIAL", "scored", True, 0.5),
+    "GHSA-mx03-0000-0000": ("miss", "clean", "scored", "MISS", "scored", True, 0.0),
+    "GHSA-mx04-0000-0000": ("hit", "fp", "scored", "HIT", "scored", False, 0.0),
+    "GHSA-mx05-0000-0000": ("error", "clean", "reviewer_error", None, "scored", True, None),
+    "GHSA-mx06-0000-0000": ("empty", "clean", "no_answer", "MISS", "scored", True, 0.0),
+    "GHSA-mx07-0000-0000": ("hit", "empty", "scored", "HIT", "no_answer", None, 0.0),
+    "GHSA-mx08-0000-0000": ("hit", "error", "scored", "HIT", "reviewer_error", None, None),
+    "GHSA-mx09-0000-0000": ("partial", "fp", "scored", "PARTIAL", "scored", False, 0.0),
+}
+MALFORMED = "GHSA-mx10-0000-0000"
+REPAIR = "GHSA-mx11-0000-0000"
+
+
+def test_mixed_overrides_with_mock_judge(tmp_path):
+    ids = sorted([*MIXED, MALFORMED, REPAIR])
+    ds = make_dataset(tmp_path, [{"case_id": cid} for cid in ids])
+    cfg_dict = base_config(overrides={cid: {"vuln": m[0], "fixed": m[1]}
+                                      for cid, m in MIXED.items()})
+    cfg_dict["judges"]["mock"] = {"adapter": "mock", "malformed_cases": [MALFORMED],
+                                  "repair_cases": [REPAIR]}
+    cfg = write_config(tmp_path, cfg_dict)
+    results = tmp_path / "results"
+    assert run(ds, cfg, results) == 1
+    rd = only_run(results)
+    for cid, (_, _, v_status, verdict, f_status, clean, pair) in MIXED.items():
+        rec = load(rd / "cases" / f"{cid}.json")
+        got = (rec["vuln"]["status"], rec["vuln"]["verdict"], rec["fixed"]["status"],
+               rec["fixed"]["fixed_clean"], rec["pair_credit"])
+        assert got == (v_status, verdict, f_status, clean, pair), cid
+        for side in ("vuln", "fixed"):
+            if rec[side]["status"] != "scored":
+                assert rec[side]["judge"] is None, (cid, side)
+        if rec["vuln"]["status"] != "scored":
+            assert rec["vuln"]["location_match"] is None
+    statuses = {load(p)[s]["status"] for p in (rd / "cases").glob("*.json") for s in ("vuln", "fixed")}
+    assert "reviewed" not in statuses
+
+    bad = load(rd / "cases" / f"{MALFORMED}.json")
+    for side in ("vuln", "fixed"):
+        assert bad[side]["status"] == "judge_error"
+        assert bad[side]["judge"]["status"] == "error" and bad[side]["judge"]["error"]
+        assert bad[side]["judge"]["parsed"] is None
+    assert bad["vuln"]["verdict"] is None and bad["vuln"]["verdict"] != "MISS"
+    assert bad["fixed"]["fixed_clean"] is None and bad["pair_credit"] is None
+
+    fixed_up = load(rd / "cases" / f"{REPAIR}.json")
+    for side in ("vuln", "fixed"):
+        assert fixed_up[side]["status"] == "scored"
+        assert fixed_up[side]["judge"]["repaired"] is True
+    assert fixed_up["vuln"]["verdict"] == "HIT" and fixed_up["pair_credit"] == 1.0
+
+    meta = load(rd / "meta.json")
+    assert meta["counts"]["reviewer_errors"] == 2
+    assert meta["counts"]["judge_errors"] == 2
+
+
+def test_must_not_fixed_empty_is_never_clean(env, tmp_path):
+    ds, _, results = env
+    cfg = write_config(tmp_path, base_config(fixed="empty"))
+    assert run(ds, cfg, results) == 0
+    for cid in ALL_IDS:
+        rec = load(only_run(results) / "cases" / f"{cid}.json")
+        assert rec["fixed"]["status"] == "no_answer"
+        assert rec["fixed"]["fixed_clean"] is None
+        assert rec["vuln"]["verdict"] == "HIT"
+        assert rec["pair_credit"] == 0.0
+
+
+def test_resume_reruns_judge_error_case(tmp_path, monkeypatch):
+    ds = make_dataset(tmp_path, [{"case_id": MALFORMED}])
+    cfg_dict = base_config()
+    cfg_dict["judges"]["mock"]["malformed_cases"] = [MALFORMED]
+    cfg = write_config(tmp_path, cfg_dict)
+    results = tmp_path / "results"
+    assert run(ds, cfg, results) == 1
+    rd = only_run(results)
+    calls = counting(monkeypatch)
+    assert run(ds, cfg, results, "--resume", rd.name) == 1
+    assert sorted(calls) == [(MALFORMED, "fixed"), (MALFORMED, "vuln")]
+
+
+def test_must_not_openai_judge_unavailable_fails_before_run_dir(env, tmp_path, capsys):
+    ds, _, results = env
+    cfg_dict = base_config()
+    cfg_dict["judges"]["llm"] = {"adapter": "openai_compat", "base_url": "http://judge.invalid",
+                                 "model": "judge-model", "api_key_env": "REDPEN_TEST_KEY"}
+    cfg = write_config(tmp_path, cfg_dict)
+    assert run(ds, cfg, results, "--judge", "llm") == 2
+    assert "is not available" in capsys.readouterr().err
+    assert run_dirs(results) == []
