@@ -375,7 +375,7 @@ def render_html(metrics: list[dict], runs: list[Run], classes: list[str],
 # ------------------------------------------------------------ entry point
 
 def report(results_dir, dataset_path, runs_arg: str | None = None,
-           markdown_path=None, html_path=None) -> int:
+           markdown_path=None, html_path=None, worksheet_path=None) -> int:
     dataset = load_dataset(dataset_path)
     manifest = dataset.manifest
     run_ids = [r.strip() for r in runs_arg.split(",") if r.strip()] if runs_arg else None
@@ -397,4 +397,9 @@ def report(results_dir, dataset_path, runs_arg: str | None = None,
         cases = {c.case_id: c.data for c in dataset.cases}
         atomic_write_text(html_path, render_html(metrics, runs, classes, cases, utc_now_iso()))
         print(f"html: {html_path}")
+    if worksheet_path:
+        from redpen.worksheet import render_worksheet
+        cases = {c.case_id: c for c in dataset.cases}
+        atomic_write_text(worksheet_path, render_worksheet(runs, cases))
+        print(f"worksheet: {worksheet_path}")
     return 0

@@ -32,7 +32,8 @@ def _run(args: argparse.Namespace) -> int:
 def _report(args: argparse.Namespace) -> int:
     from redpen.report import report
 
-    return report(args.results_dir, args.dataset, args.runs, args.markdown, args.html)
+    return report(args.results_dir, args.dataset, args.runs, args.markdown, args.html,
+                  args.worksheet)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -68,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--runs", metavar="ID[,ID...]")
     rp.add_argument("--markdown", metavar="PATH")
     rp.add_argument("--html", metavar="PATH")
+    rp.add_argument("--worksheet", metavar="PATH", help="write the judge hand-check worksheet")
     rp.set_defaults(handler=_report)
     return parser
 
