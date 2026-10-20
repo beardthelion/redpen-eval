@@ -70,7 +70,7 @@ The build is all or nothing. It attempts every case, lists each failure with its
 
 ## Licensing
 
-The window files are excerpts of upstream open-source projects and stay under those projects' licenses. Each window file starts with an attribution header naming the source repository, ref, and path, the date it was excerpted and modified, the SPDX license, and a copyright line. Each case records its license in `case.json`, and the upstream license texts are copied verbatim under `dataset/v1/licenses/`. Two cases, j3hg (nginx-ui) and xv7q (vikunja), are excerpts of AGPL-3.0 projects, and their window headers carry a notice that the excerpt is released under the GNU Affero General Public License v3.0. RedPen's own code is a separate work from the dataset excerpts.
+The window files are excerpts of upstream open-source projects and stay under those projects' licenses. Each window file starts with an attribution header naming the source repository, ref, and path, the date it was excerpted and modified, the SPDX license, and a copyright line. Each case records its license in `case.json`, and the upstream license texts are copied verbatim under `dataset/v1/licenses/`. Two cases, j3hg (nginx-ui) and xv7q (vikunja), are excerpts of AGPL-3.0 projects, and their window headers carry a notice that the excerpt is released under the GNU Affero General Public License v3.0. RedPen's own code is a separate work from the dataset excerpts and is released under the MIT License (see `LICENSE`). The MIT License does not cover the files under `dataset/`.
 
 ## Metrics
 

@@ -7,6 +7,8 @@ name = "redpen"
 version = "0.1.0"
 description = "Benchmark for AI code reviewers on real CVE-derived vulnerabilities"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "semgrep>=1.177.0,<1.178",
     "pyyaml>=6.0",
