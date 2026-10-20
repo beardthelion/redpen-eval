@@ -24,7 +24,13 @@ SCHEMA_VERSION = 1
 CONTEXT_LINES = 3
 WINDOW_POLICY = {"version": "window-v1", "context_lines": CONTEXT_LINES}
 VERSION_RE = re.compile(r"^v[0-9]+$")
-COPYRIGHT_RE = re.compile(r"(?i)\bcopyright\b")
+# A real notice: "Copyright" then (c), a year, or a capitalized holder name. Rejects
+# license prose ("the copyright owner"), the Apache template ("Copyright [yyyy]"),
+# and "Copyright Notice/Holders/License" headings.
+COPYRIGHT_RE = re.compile(
+    r"^(?i:copyright)(?:\s*(?:\([cC]\)|\u00a9)|\s+[0-9]{4}"
+    r"|\s+(?!(?i:notice|holders?|owners?|license|law)\b)[A-Z0-9])"
+)
 
 
 class DatasetError(Exception):
@@ -148,13 +154,24 @@ def _clean_copyright(line: str) -> str:
     return s.strip()
 
 
+# License-text placeholders from "how to apply" appendices: <year>, [yyyy], [year], [fullname].
+COPYRIGHT_PLACEHOLDER_RE = re.compile(r"(?i)<year>|\[(?:yyyy|year|fullname)\]|[<\[]name of")
+
+
+def _is_copyright_notice(line: str) -> bool:
+    cleaned = _clean_copyright(line)
+    return (bool(COPYRIGHT_RE.match(cleaned))
+            and "free software foundation" not in cleaned.lower()
+            and not COPYRIGHT_PLACEHOLDER_RE.search(cleaned))
+
+
 def _copyright(sink_text: str, license_texts: list[str], owner: str, repo: str) -> tuple[str, str]:
     for line in sink_text.splitlines()[:40]:
-        if COPYRIGHT_RE.search(line):
+        if _is_copyright_notice(line):
             return _clean_copyright(line), "sink_file"
     for text in license_texts:
         for line in text.splitlines():
-            if COPYRIGHT_RE.search(line):
+            if _is_copyright_notice(line):
                 return _clean_copyright(line), "license_file"
     return f"Copyright the {owner}/{repo} contributors", "fallback"
 
