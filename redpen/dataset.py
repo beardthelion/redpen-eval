@@ -17,8 +17,12 @@ from redpen.semgrep import SemgrepRun, run_semgrep
 from redpen.util import atomic_write_bytes, atomic_write_json, semgrep_bin, sha256_bytes, utc_now_iso
 from redpen.window import Construct, Span
 
-# KTD18: per-case allowlist of accepted warn-level PartialParsing errors.
-ACCEPTED_PARSE_WARNINGS = {"GHSA-pw5q-rjx4-7f7p": "Go 1.26 new(expr) syntax at lines 287 and 289"}
+# KTD18: per-case allowlist of accepted warn-level PartialParsing errors, each matched on
+# the semgrep message so a different parse gap in the same file stays blocking.
+# pw5q: Go 1.26 new(expr) syntax at upstream lines 287 and 289.
+ACCEPTED_PARSE_WARNINGS = {
+    "GHSA-pw5q-rjx4-7f7p": re.compile(r"\n `new\(time\.Now\(\)\)` was unexpected$"),
+}
 
 SCHEMA_VERSION = 1
 CONTEXT_LINES = 3
@@ -84,8 +88,10 @@ def _split_errors(run: SemgrepRun, case_id: str) -> tuple[list[dict], list[dict]
     if case_id not in ACCEPTED_PARSE_WARNINGS:
         return list(run.errors), []
     blocking, accepted = [], []
+    pattern = ACCEPTED_PARSE_WARNINGS[case_id]
     for e in run.errors:
-        if e.get("level") == "warn" and _error_type(e) == "PartialParsing":
+        if (e.get("level") == "warn" and _error_type(e) == "PartialParsing"
+                and pattern.search(str(e.get("message", "")))):
             accepted.append(e)
         else:
             blocking.append(e)

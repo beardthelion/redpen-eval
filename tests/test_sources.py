@@ -206,3 +206,55 @@ def test_shared_commits_survive_second_pass(tmp_path):
     for _ in range(2):
         sources.ensure_commits(url, b, a, cache)
         sources.ensure_commits(url, c, b, cache)
+
+
+# ------------------------------------------------------------ timeouts
+
+def test_git_and_gh_calls_carry_timeouts(monkeypatch, tmp_path):
+    seen = []
+
+    def fake_run(cmd, **kw):
+        seen.append((cmd[0], kw.get("timeout")))
+        return subprocess.CompletedProcess(cmd, 0, b"" if cmd[0] == "git" else "{}", b"")
+    monkeypatch.setattr(sources.shutil, "which", lambda name: "/usr/bin/gh")
+    monkeypatch.setattr(sources.subprocess, "run", fake_run)
+    sources._git(tmp_path, "status")
+    sources.gh_api("/x")
+    assert seen == [("git", sources.GIT_TIMEOUT_S), ("/usr/bin/gh", sources.GH_TIMEOUT_S)]
+
+
+def test_must_not_hung_git_hangs_the_build(monkeypatch, tmp_path):
+    def fake_run(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+    monkeypatch.setattr(sources.subprocess, "run", fake_run)
+    with pytest.raises(SourceError, match="timed out"):
+        sources._git(tmp_path, "fetch", "origin")
+    assert sources._git_ok(tmp_path, "cat-file", "-e", "x") is False
+
+
+def test_must_not_hung_gh_hangs_the_build(monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(sources.shutil, "which", lambda name: "/usr/bin/gh")
+
+    def fake_run(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+    monkeypatch.setattr(sources.subprocess, "run", fake_run)
+    monkeypatch.setattr(sources.time, "sleep", sleeps.append)
+    with pytest.raises(SourceError, match="timed out"):
+        sources.gh_api("/advisories/X")
+    assert sleeps == list(sources.GH_BACKOFF_S)
+
+
+def test_gh_timeout_then_success_retries(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sources.shutil, "which", lambda name: "/usr/bin/gh")
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        if len(calls) == 1:
+            raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+        return subprocess.CompletedProcess(cmd, 0, '{"ok": 1}', "")
+    monkeypatch.setattr(sources.subprocess, "run", fake_run)
+    monkeypatch.setattr(sources.time, "sleep", lambda s: None)
+    assert sources.gh_api("/x") == {"ok": 1}
+    assert len(calls) == 2

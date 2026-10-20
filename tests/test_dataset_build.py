@@ -1,6 +1,7 @@
 import contextlib
 import io
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -517,7 +518,7 @@ WARN = {"level": "warn", "type": ["PartialParsing", [{"start": {"line": 9}, "end
 
 
 def test_allowlist_accepts_warn_partial_parsing_for_listed_case(monkeypatch):
-    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {"GHSA-x": "why"})
+    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {"GHSA-x": re.compile("partial")})
     assert dataset.fires(_run([WARN], 1), "GHSA-x") is True
     assert dataset.silent(_run([WARN], 0), "GHSA-x") is True
     assert dataset.fires(_run([dict(WARN, type="PartialParsing")], 1), "GHSA-x") is True
@@ -528,15 +529,17 @@ def test_allowlist_accepts_warn_partial_parsing_for_listed_case(monkeypatch):
     dict(WARN, type=["Syntax error", []]),
     dict(WARN, type="Timeout"),
     {"level": "warn"},
+    dict(WARN, message="Syntax error at line h.go:3:\n `=` was unexpected"),
+    {k: v for k, v in WARN.items() if k != "message"},
 ])
 def test_must_not_allowlist_rejects_other_errors(monkeypatch, err):
-    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {"GHSA-x": "why"})
+    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {"GHSA-x": re.compile("partial")})
     assert dataset.fires(_run([err], 1), "GHSA-x") is False
     assert dataset.silent(_run([err], 0), "GHSA-x") is False
 
 
 def test_must_not_allowlist_rejects_unlisted_case(monkeypatch):
-    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {"GHSA-x": "why"})
+    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {"GHSA-x": re.compile("partial")})
     assert dataset.fires(_run([WARN], 1), "GHSA-y") is False
     assert dataset.silent(_run([WARN], 0), "GHSA-y") is False
 
@@ -545,12 +548,28 @@ def test_default_allowlist_is_pw5q_only():
     assert set(dataset.ACCEPTED_PARSE_WARNINGS) == {"GHSA-pw5q-rjx4-7f7p"}
 
 
+# Messages semgrep 1.177 emits on the pw5q windows, and near misses that must stay blocking.
+PW5Q_MSG = "Syntax error at line cases/GHSA-pw5q-rjx4-7f7p/vuln/users.go:42:\n `new(time.Now())` was unexpected"
+
+
+@pytest.mark.parametrize("message, accepted", [
+    (PW5Q_MSG, True),
+    (PW5Q_MSG.replace(":42:", ":287:"), True),
+    ("Syntax error at line users.go:9:\n `=` was unexpected", False),
+    ("Syntax error at line users.go:42:\n `new(time.Now()).Add(1)` was unexpected", False),
+    ("Syntax error at line users.go:42:\n `new(x)` was unexpected", False),
+])
+def test_pw5q_allowlist_matches_only_the_new_expr_warning(message, accepted):
+    run = _run([dict(WARN, message=message)], 1)
+    assert dataset.fires(run, "GHSA-pw5q-rjx4-7f7p") is accepted
+
+
 WARN_ID = "GHSA-warn-0000-0000"
 WARN_RULE = "    pattern: io.Copy($W, $R.Body)\n"
 
 
 def test_accepted_warning_builds_with_warnings_recorded(tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {WARN_ID: "generic alias in func"})
+    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {WARN_ID: re.compile(r"`=` was unexpected")})
     w = World(tmp_path, monkeypatch)
     w.add(WARN_ID, "go", WARN_RULE, "h.go", GO_WARN_VULN, GO_WARN_FIXED, MIT)
     out = tmp_path / "ds" / "v1"
@@ -572,6 +591,18 @@ def test_must_not_unlisted_warning_fails(tmp_path, monkeypatch, capsys):
     assert rc == 1
     (fail,) = [l for l in text.splitlines() if l.startswith(f"FAIL {WARN_ID}: ")]
     assert "vuln side: semgrep errors" in fail and "PartialParsing" in fail
+    assert not out.exists()
+
+
+def test_must_not_listed_case_with_other_warning_fails(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(dataset, "ACCEPTED_PARSE_WARNINGS", {WARN_ID: re.compile(r"`new\(x\)` was unexpected")})
+    w = World(tmp_path, monkeypatch)
+    w.add(WARN_ID, "go", WARN_RULE, "h.go", GO_WARN_VULN, GO_WARN_FIXED, MIT)
+    out = tmp_path / "ds" / "v1"
+    rc = build(w.sweep(), out, tmp_path / "cache")
+    text = capsys.readouterr().out
+    assert rc == 1
+    assert any(l.startswith(f"FAIL {WARN_ID}: ") and "PartialParsing" in l for l in text.splitlines())
     assert not out.exists()
 
 

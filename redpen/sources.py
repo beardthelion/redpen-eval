@@ -17,6 +17,9 @@ import yaml
 LICENSE_SPDX_OVERRIDES = {"GHSA-cv23-7vc5-jfh7": "BSD-2-Clause"}
 
 GH_BACKOFF_S = (2, 4, 8)
+# A depth-2 fetch of a large repo can take minutes; a hung one must still end.
+GIT_TIMEOUT_S = 600
+GH_TIMEOUT_S = 60
 LICENSE_FILE_RE = re.compile(r"(?i)^(licen[cs]e|copying)(\.[a-z0-9]+)?$")
 
 
@@ -37,7 +40,10 @@ class CorpusCase:
 
 
 def _run(cmd, cwd=None) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True)
+    try:
+        return subprocess.run(cmd, cwd=cwd, capture_output=True, timeout=GIT_TIMEOUT_S)
+    except subprocess.TimeoutExpired:
+        raise SourceError(f"{' '.join(map(str, cmd))} timed out after {GIT_TIMEOUT_S}s") from None
 
 
 def _git(repo, *args) -> bytes:
@@ -49,7 +55,10 @@ def _git(repo, *args) -> bytes:
 
 
 def _git_ok(repo, *args) -> bool:
-    return _run(["git", "-C", str(repo), *args]).returncode == 0
+    try:
+        return _run(["git", "-C", str(repo), *args]).returncode == 0
+    except SourceError:
+        return False
 
 
 # ------------------------------------------------------------ corpus
@@ -109,10 +118,14 @@ def gh_api(path: str) -> dict:
     cmd = [gh, "api", path]
     last = ""
     for attempt in range(len(GH_BACKOFF_S) + 1):
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode == 0:
-            return json.loads(proc.stdout)
-        last = proc.stderr.strip()
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=GH_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            last = f"timed out after {GH_TIMEOUT_S}s"
+        else:
+            if proc.returncode == 0:
+                return json.loads(proc.stdout)
+            last = proc.stderr.strip()
         if attempt < len(GH_BACKOFF_S):
             time.sleep(GH_BACKOFF_S[attempt])
     raise SourceError(f"gh api {path} failed: {last}")
