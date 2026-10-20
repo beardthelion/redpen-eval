@@ -29,10 +29,12 @@ The first command runs all 25 cases against the mock reviewer and mock judge def
 
 ## Real reviewers and the judge
 
-Reviewers and judges are configured in `reviewers.yaml`. The `openai_compat` adapter talks to any OpenAI-compatible chat completions endpoint and takes `base_url`, `model`, and `api_key_env`, the name of the environment variable that holds the key. Keys are read from the environment and never written to disk. Fill in the `CHANGE-ME` values for `reviewer-a`, `reviewer-b`, and the `llm` judge, export the key variables, then:
+Reviewers and judges are configured in `reviewers.yaml`. The `openai_compat` adapter talks to any OpenAI-compatible chat completions endpoint and takes `base_url`, `model`, and `api_key_env`, the name of the environment variable that holds the key. Keys are read from the environment and never written to disk. The checked-in file runs everything through [aimlapi.com](https://aimlapi.com): Grok 4.7 as `reviewer-a`, GLM 5.3 as `reviewer-b`, and Claude Sonnet 5.5 as the `llm` judge, all on one key. aimlapi rejects a `seed` below 1. Export the key, then:
 
 ```sh
+export AIMLAPI_API_KEY=...
 redpen run --reviewer reviewer-a --judge llm --cases all
+redpen run --reviewer reviewer-b --judge llm --cases all
 redpen report
 ```
 

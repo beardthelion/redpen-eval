@@ -48,8 +48,10 @@ def test_repo_reviewers_yaml_loads():
     assert set(cfg.reviewers) == {"mock", "reviewer-a", "reviewer-b"}
     assert set(cfg.judges) == {"mock", "llm"}
     assert cfg.default_judge == "mock"
-    assert cfg.reviewers["reviewer-a"]["base_url"] == "CHANGE-ME"
-    assert cfg.reviewers["reviewer-b"]["api_key_env"] == "REDPEN_REVIEWER_B_KEY"
+    for entry in (cfg.reviewers["reviewer-a"], cfg.reviewers["reviewer-b"], cfg.judges["llm"]):
+        assert entry["base_url"] == "https://api.aimlapi.com/v1"
+        assert entry["api_key_env"] == "AIMLAPI_API_KEY"
+        assert entry.get("seed", 1) >= 1  # aimlapi rejects seed 0
 
 
 def test_valid_file_loads(tmp_path):
@@ -109,8 +111,9 @@ def test_must_not_missing_file(tmp_path):
         load_config(tmp_path / "nope.yaml")
 
 
-def test_change_me_loads_but_make_reviewer_refuses():
-    cfg = load_config(REPO / "reviewers.yaml")
+def test_change_me_loads_but_make_reviewer_refuses(tmp_path):
+    text = (REPO / "reviewers.yaml").read_text().replace("https://api.aimlapi.com/v1", "CHANGE-ME")
+    cfg = load_config(write(tmp_path, text))
     with pytest.raises(ConfigError, match=r"reviewer 'reviewer-a' is not configured \(CHANGE-ME\)"):
         make_reviewer("reviewer-a", cfg)
 

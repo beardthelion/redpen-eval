@@ -7,25 +7,25 @@ reviewers:
     overrides: {}      # {"<case_id>": {"vuln": "...", "fixed": "..."}}
   reviewer-a:
     adapter: openai_compat
-    base_url: CHANGE-ME
-    model: CHANGE-ME
-    api_key_env: REDPEN_REVIEWER_A_KEY
+    base_url: https://api.aimlapi.com/v1
+    model: x-ai/grok-4-7
+    api_key_env: AIMLAPI_API_KEY
     temperature: 0
     max_tokens: 2048
     max_tokens_param: max_tokens   # or max_completion_tokens
-    seed: 0
+    seed: 1
     timeout_s: 120
     max_retries: 2
     retry_backoff_s: 1.0
   reviewer-b:
     adapter: openai_compat
-    base_url: CHANGE-ME
-    model: CHANGE-ME
-    api_key_env: REDPEN_REVIEWER_B_KEY
+    base_url: https://api.aimlapi.com/v1
+    model: zhipu/glm-5.3
+    api_key_env: AIMLAPI_API_KEY
     temperature: 0
     max_tokens: 2048
     max_tokens_param: max_tokens   # or max_completion_tokens
-    seed: 0
+    seed: 1
     timeout_s: 120
     max_retries: 2
     retry_backoff_s: 1.0
@@ -36,9 +36,9 @@ judges:
     repair_cases: []      # case ids whose first judge output is invalid, second valid
   llm:
     adapter: openai_compat
-    base_url: CHANGE-ME
-    model: CHANGE-ME
-    api_key_env: REDPEN_JUDGE_KEY
+    base_url: https://api.aimlapi.com/v1
+    model: anthropic/claude-sonnet-5-5
+    api_key_env: AIMLAPI_API_KEY
     temperature: 0
     max_tokens: 1024
     structured_output: json_schema   # json_schema | json_object | prompt
