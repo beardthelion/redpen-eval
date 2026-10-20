@@ -29,7 +29,7 @@ The first command runs all 25 cases against the mock reviewer and mock judge def
 
 ## Real reviewers and the judge
 
-Reviewers and judges are configured in `reviewers.yaml`. The `openai_compat` adapter talks to any OpenAI-compatible chat completions endpoint and takes `base_url`, `model`, and `api_key_env`, the name of the environment variable that holds the key. Keys are read from the environment and never written to disk. The checked-in file runs everything through [aimlapi.com](https://aimlapi.com): Grok 4.7 as `reviewer-a`, Gemini 3.1 Pro as `reviewer-b`, and Claude Sonnet 5.5 as the `llm` judge, all on one key. aimlapi rejects a `seed` below 1, and its proxy sometimes drops a response that takes several minutes; `--resume` retries those cases. Export the key, then:
+Reviewers and judges are configured in `reviewers.yaml`. The `openai_compat` adapter talks to any OpenAI-compatible chat completions endpoint and takes `base_url`, `model`, and `api_key_env`, the name of the environment variable that holds the key. Keys are read from the environment and never written to disk. The checked-in file runs everything through [aimlapi.com](https://aimlapi.com): Grok 4.7 as `reviewer-a`, Gemini 3.1 Pro as `reviewer-b`, and Claude Sonnet 5.5 as the `llm` judge, all on one key. aimlapi rejects a `seed` below 1. Its proxy closes a response that stays silent for several minutes, so the reviewer entries set `stream: true`; dropped connections are also retried automatically. Export the key, then:
 
 ```sh
 export AIMLAPI_API_KEY=...
@@ -117,4 +117,8 @@ Dataset v1, judge model anthropic/claude-sonnet-5-5 (llm), prompts review-v1 / j
 
 judge hand-check: 5/6 agreement, [results/sample/judge-handcheck.md](results/sample/judge-handcheck.md)
 
-Full report: [results/sample/report.html](results/sample/report.html)
+The two pair-score intervals overlap almost completely, so at n=25 this is a tie, not a ranking. Grok finds one more vulnerability (15 HITs to 14); Gemini never re-reported a patched bug, while Grok did on 3 of 25 fixed sides.
+
+Grok's run metadata records `max_tokens: 2048` and Gemini's records 65536, because the cap was raised between the two runs. aimlapi did not apply the 2048 cap to Grok: its longest answer was 56472 tokens and none of its 50 answers stopped on the length limit, so both reviewers had room to finish.
+
+Full report: [results/sample/report.html](results/sample/report.html). GitHub shows the file as source; download it and open it in a browser.
