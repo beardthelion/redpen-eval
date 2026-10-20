@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
+from redpen.scorer import LOCATION_TOLERANCE
 from redpen.semgrep import run_semgrep
 
 CONSTRUCTS_RULES = Path(__file__).parent / "constructs.yaml"
@@ -64,9 +65,14 @@ def find_constructs(path, language: str) -> list[Construct]:
     run = run_semgrep(CONSTRUCTS_RULES, Path(path))
     if run.errors:
         raise WindowError(f"semgrep errors finding constructs in {path}: {run.errors}")
+    return constructs_from_matches(run.matches, language)
+
+
+def constructs_from_matches(matches, language: str) -> list[Construct]:
+    """Constructs of this language's enclosing kinds, deduped and sorted by (start, end, kind)."""
     kinds = set(ENCLOSING_ORDER[language])
     out = []
-    for m in run.matches:
+    for m in matches:
         kind = m.check_id.rsplit(".", 1)[-1]
         if kind in kinds:
             out.append(Construct(kind, m.start_line, m.end_line))
@@ -235,7 +241,7 @@ def render_numbered(window_text: str, header_line_count: int, segments) -> str:
     return "".join(out)
 
 
-def location_selectivity(window_code_original_lines, expected_spans, tolerance=5) -> float:
+def location_selectivity(window_code_original_lines, expected_spans, tolerance=LOCATION_TOLERANCE) -> float:
     """Fraction of window code lines within tolerance of any expected span (KTD9)."""
     lines = list(window_code_original_lines)
     if not lines:

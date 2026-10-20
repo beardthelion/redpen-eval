@@ -16,6 +16,25 @@ def _no_network(monkeypatch):
     monkeypatch.setattr(socket, "create_connection", _blocked)
 
 
+def load(path: Path) -> dict:
+    return json.loads(path.read_text())
+
+
+def line_of(src, needle):
+    """1-based line number of the only line containing needle."""
+    hits = [i + 1 for i, line in enumerate(src.split("\n")) if needle in line]
+    assert len(hits) == 1, (needle, hits)
+    return hits[0]
+
+
+def patch_judge(monkeypatch):
+    """Use the mock judge backend for openai_compat judge entries."""
+    from redpen import runner
+    from redpen.judge import MockJudgeBackend
+    monkeypatch.setattr(runner, "make_judge_backend",
+                        lambda name, config: MockJudgeBackend({"adapter": "mock"}))
+
+
 # ------------------------------------------------------------ git fixtures
 
 GIT = ["git", "-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false"]

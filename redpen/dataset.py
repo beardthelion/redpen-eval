@@ -14,7 +14,7 @@ from pathlib import Path
 
 from redpen import sources, window
 from redpen.semgrep import SemgrepRun, run_semgrep
-from redpen.util import atomic_write_bytes, semgrep_bin, sha256_bytes, utc_now_iso
+from redpen.util import atomic_write_bytes, atomic_write_json, semgrep_bin, sha256_bytes, utc_now_iso
 from redpen.window import Construct, Span
 
 # KTD18: per-case allowlist of accepted warn-level PartialParsing errors.
@@ -128,6 +128,12 @@ def _warning_records(side: str, run: SemgrepRun, case_id: str) -> list[dict]:
     return out
 
 
+def _pair_problems(run_v: SemgrepRun, run_f: SemgrepRun, case_id: str) -> list[str]:
+    """Problems with the vuln side firing and the fixed side staying silent, vuln first."""
+    return [p for p in (_side_problem("vuln", run_v, case_id, "fires"),
+                        _side_problem("fixed", run_f, case_id, "silent")) if p]
+
+
 def _constructs(path: Path, language: str, case_id: str) -> list[Construct]:
     """window.find_constructs, but tolerating KTD18-accepted warnings for listed cases."""
     if case_id not in ACCEPTED_PARSE_WARNINGS:
@@ -136,13 +142,7 @@ def _constructs(path: Path, language: str, case_id: str) -> list[Construct]:
     blocking, _ = _split_errors(run, case_id)
     if blocking:
         raise CaseFailure(f"semgrep errors finding constructs: {_describe_errors(blocking)}")
-    kinds = set(window.ENCLOSING_ORDER[language])
-    found = {
-        Construct(m.check_id.rsplit(".", 1)[-1], m.start_line, m.end_line)
-        for m in run.matches
-        if m.check_id.rsplit(".", 1)[-1] in kinds
-    }
-    return sorted(found, key=lambda c: (c.start, c.end, c.kind))
+    return window.constructs_from_matches(run.matches, language)
 
 
 # ------------------------------------------------------------ build helpers
@@ -263,8 +263,7 @@ def build_case(cc: sources.CorpusCase, staging: Path, cache_dir: Path, build_dat
 
         whole_v = run_semgrep(rule_path, whole_v_path)
         whole_f = run_semgrep(rule_path, whole_f_path)
-        problems = [p for p in (_side_problem("vuln", whole_v, case_id, "fires"),
-                                _side_problem("fixed", whole_f, case_id, "silent")) if p]
+        problems = _pair_problems(whole_v, whole_f, case_id)
         if problems:
             raise CaseFailure("whole file: " + "; ".join(problems))
 
@@ -297,8 +296,7 @@ def build_case(cc: sources.CorpusCase, staging: Path, cache_dir: Path, build_dat
         atomic_write_bytes(win_f_path, window.build_window_text(fixed_lines, sf, language, head_f).encode("utf-8"))
         rv = run_semgrep(rule_path, win_v_path)
         rf = run_semgrep(rule_path, win_f_path)
-        probs = [p for p in (_side_problem("vuln", rv, case_id, "fires"),
-                             _side_problem("fixed", rf, case_id, "silent")) if p]
+        probs = _pair_problems(rv, rf, case_id)
         return rv, rf, probs
 
     window_mode = "trimmed"
@@ -360,8 +358,7 @@ def build_case(cc: sources.CorpusCase, staging: Path, cache_dir: Path, build_dat
     for key in ("ecosystem", "guard_class", "vuln_description"):
         if not case[key]:
             raise CaseFailure(f"rule is missing {key}")
-    case_bytes = (json.dumps(case, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
-    atomic_write_bytes(case_dir / "case.json", case_bytes)
+    atomic_write_json(case_dir / "case.json", case)
     return {
         "case_id": case_id,
         "guard_class": case["guard_class"],

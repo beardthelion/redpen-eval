@@ -4,9 +4,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import make_dataset
+from conftest import load, make_dataset, patch_judge
 from redpen.cli import main
-from redpen.judge import MockJudgeBackend
 from redpen.prompts import judge_prompt_sha256
 from redpen.reviewers.mock import MockReviewer
 
@@ -42,13 +41,6 @@ def env(tmp_path):
     return ds, cfg, results
 
 
-def patch_judge(monkeypatch):
-    """Stand in a mock judge backend for an openai_compat judge entry (adapter lands in U11)."""
-    from redpen import runner
-    monkeypatch.setattr(runner, "make_judge_backend",
-                        lambda name, config: MockJudgeBackend({"adapter": "mock"}))
-
-
 def run(ds, cfg, results, *extra):
     argv = ["run", "--reviewer", "mock", "--dataset", str(ds), "--config", str(cfg),
             "--results-dir", str(results), *extra]
@@ -66,10 +58,6 @@ def only_run(results: Path) -> Path:
     dirs = run_dirs(results)
     assert len(dirs) == 1
     return dirs[0]
-
-
-def load(path: Path) -> dict:
-    return json.loads(path.read_text())
 
 
 def test_happy_path_writes_meta_and_case_files(env, capsys):

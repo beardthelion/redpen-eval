@@ -5,9 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from conftest import make_dataset
+from conftest import load, make_dataset, patch_judge
 from redpen.cli import main
-from redpen.judge import MockJudgeBackend
 
 CASES = [
     {"case_id": "GHSA-23vg-4cjm-66q5", "guard_class": "path-traversal"},
@@ -69,17 +68,6 @@ class Env:
 @pytest.fixture
 def env(tmp_path, monkeypatch):
     return Env(tmp_path, monkeypatch)
-
-
-def patch_judge(monkeypatch):
-    """Use the mock judge backend for openai_compat judge entries."""
-    from redpen import runner
-    monkeypatch.setattr(runner, "make_judge_backend",
-                        lambda name, config: MockJudgeBackend({"adapter": "mock"}))
-
-
-def load(path: Path) -> dict:
-    return json.loads(path.read_text())
 
 
 def save(path: Path, obj: dict) -> None:

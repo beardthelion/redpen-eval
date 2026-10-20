@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import commit_files, make_rule, make_sweep, make_upstream_repo, patch_github
+from conftest import commit_files, line_of, make_rule, make_sweep, make_upstream_repo, patch_github
 from redpen import cli, dataset, sources
 from redpen.dataset import DatasetError
 from redpen.semgrep import Match, SemgrepRun, run_semgrep
@@ -30,12 +30,6 @@ MANIFEST_KEYS = {"schema_version", "dataset_version", "built_utc", "redpen_versi
 MANIFEST_CASE_KEYS = {"case_id", "guard_class", "ecosystem", "language", "rule_sha256",
                       "window_mode", "license_spdx", "vuln_ref", "fixed_ref", "vuln_segments",
                       "fixed_segments", "case_sha256"}
-
-
-def line_of(src, needle):
-    hits = [i + 1 for i, line in enumerate(src.split("\n")) if needle in line]
-    assert len(hits) == 1, (needle, hits)
-    return hits[0]
 
 
 # ------------------------------------------------------------ fixture sources

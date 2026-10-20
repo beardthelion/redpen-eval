@@ -111,7 +111,7 @@ def _case_block(n: int, run, rec: dict, case) -> str:
 def render_worksheet(runs, cases: dict) -> str:
     """cases maps case_id to a dataset Case (for the numbered window and expected spans)."""
     meta = runs[0].meta
-    blocks = [f"{_case_block(n, run, rec, cases[rec['case_id']])}"
+    blocks = [_case_block(n, run, rec, cases[rec['case_id']])
               for n, (run, rec) in enumerate(select_cases(runs), start=1)]
     judge = meta["judge"]
     footer = "\n".join([

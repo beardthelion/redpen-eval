@@ -21,7 +21,6 @@ from redpen.util import atomic_write_json, canonical_json, sha256_bytes, utc_now
 
 SCORING = {"formula": "pair-v1", "location_tolerance": scorer.LOCATION_TOLERANCE,
            "bootstrap_resamples": 1000, "bootstrap_seed": 0}
-ERROR_STATUSES = {"reviewer_error", "judge_error"}
 SIDES = ("vuln", "fixed")
 
 
@@ -129,7 +128,7 @@ def _needs_run(path: Path) -> bool:
     if not path.exists():
         return True
     rec = json.loads(path.read_text())
-    return any(rec[side]["status"] in ERROR_STATUSES for side in SIDES)
+    return any(rec[side]["status"] in scorer.ERROR_STATUSES for side in SIDES)
 
 
 def run(reviewer_name: str, judge_name: str | None, cases_spec: str | None, dataset_path,

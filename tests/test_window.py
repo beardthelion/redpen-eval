@@ -1,5 +1,6 @@
 import pytest
 
+from conftest import line_of
 from redpen import window
 from redpen.semgrep import run_semgrep
 from redpen.window import (
@@ -20,13 +21,6 @@ from redpen.window import (
     vuln_segments,
     window_to_original,
 )
-
-
-def line_of(src, needle):
-    """1-based line number of the only line containing needle."""
-    hits = [i + 1 for i, line in enumerate(src.split("\n")) if needle in line]
-    assert len(hits) == 1, (needle, hits)
-    return hits[0]
 
 
 # ---------------------------------------------------------------- constructs
