@@ -82,10 +82,10 @@ Fixed judge parsed JSON:
 ```
 fixed_clean: true
 
-Human verdict (HIT/PARTIAL/MISS):
-Human fixed side (clean/re-reported):
-Agree with harness (yes/no):
-Notes:
+Human verdict (HIT/PARTIAL/MISS): HIT
+Human fixed side (clean/re-reported): clean
+Agree with harness (yes/no): yes
+Notes: Line 12 joins the client id into the path with no allowlist; that is the bug. The fixed-side findings (error length, device names, symlinks) are other issues.
 
 ## Case 2: GHSA-24cc-9352-h2pg (run 20261020T145119Z-reviewer-a-3aec9d76)
 Case id: GHSA-24cc-9352-h2pg
@@ -579,10 +579,10 @@ Fixed judge parsed JSON:
 ```
 fixed_clean: true
 
-Human verdict (HIT/PARTIAL/MISS):
-Human fixed side (clean/re-reported):
-Agree with harness (yes/no):
-Notes:
+Human verdict (HIT/PARTIAL/MISS): HIT
+Human fixed side (clean/re-reported): clean
+Agree with harness (yes/no): no
+Notes: Finding 1 is the same bug class (an unvalidated atom size makes seek land on the same header forever) at lines 743 and 759, inside the fix-diff span 741-744 the upstream patch changed. The judge rejected it because it is in _parse_custom_field rather than _traverse_atoms, but the fix covers both loops.
 
 ## Case 3: GHSA-637c-6jxx-4rwm (run 20261020T145119Z-reviewer-a-3aec9d76)
 Case id: GHSA-637c-6jxx-4rwm
@@ -827,10 +827,10 @@ Fixed judge parsed JSON:
 ```
 fixed_clean: false
 
-Human verdict (HIT/PARTIAL/MISS):
-Human fixed side (clean/re-reported):
-Agree with harness (yes/no):
-Notes:
+Human verdict (HIT/PARTIAL/MISS): MISS
+Human fixed side (clean/re-reported): re-reported
+Agree with harness (yes/no): yes
+Notes: No finding names the silent default to the operator token file at lines 122-127. On the fixed side, finding 4 says the operator token is still sent by default in legacy mode, which is the patched behaviour kept behind an opt-in, so re-reported is fair.
 
 ## Case 4: GHSA-74vm-87hj-r66f (run 20261020T160902Z-reviewer-b-e125878d)
 Case id: GHSA-74vm-87hj-r66f
@@ -1039,10 +1039,10 @@ Fixed judge parsed JSON:
 ```
 fixed_clean: true
 
-Human verdict (HIT/PARTIAL/MISS):
-Human fixed side (clean/re-reported):
-Agree with harness (yes/no):
-Notes:
+Human verdict (HIT/PARTIAL/MISS): HIT
+Human fixed side (clean/re-reported): clean
+Agree with harness (yes/no): yes
+Notes: Finding 2 is the missing nil check on schema.Value at line 273. Fixed-side findings (untyped schema bypass, ignored errors) are unrelated.
 
 ## Case 5: GHSA-2cvf-wqm6-wr9g (run 20261020T160902Z-reviewer-b-e125878d)
 Case id: GHSA-2cvf-wqm6-wr9g
@@ -1415,10 +1415,10 @@ Fixed judge parsed JSON:
 ```
 fixed_clean: true
 
-Human verdict (HIT/PARTIAL/MISS):
-Human fixed side (clean/re-reported):
-Agree with harness (yes/no):
-Notes:
+Human verdict (HIT/PARTIAL/MISS): MISS
+Human fixed side (clean/re-reported): clean
+Agree with harness (yes/no): yes
+Notes: The only finding is the resource-limit switch; nothing about the checkpoint annotation.
 
 ## Case 6: GHSA-c42q-qvc3-j6vg (run 20261020T160902Z-reviewer-b-e125878d)
 Case id: GHSA-c42q-qvc3-j6vg
@@ -1654,15 +1654,15 @@ Fixed judge parsed JSON:
 ```
 fixed_clean: true
 
-Human verdict (HIT/PARTIAL/MISS):
-Human fixed side (clean/re-reported):
-Agree with harness (yes/no):
-Notes:
+Human verdict (HIT/PARTIAL/MISS): HIT
+Human fixed side (clean/re-reported): clean
+Agree with harness (yes/no): yes
+Notes: Line 75 assigns node.url to href without scheme sanitization. The fixed review reports no issue.
 
 ## Sign-off
 Run ids: 20261020T145119Z-reviewer-a-3aec9d76, 20261020T160902Z-reviewer-b-e125878d
 Judge model: anthropic/claude-sonnet-5-5 (llm)
 Judge prompt sha256: 1b281463a5877cde3ffadc1ace4f482c72a6133e1d7bb7d56c345183fd7816b3
-Reviewer:
-Date:
-Signed-off: no
+Reviewer: beardthelion
+Date: 2026-10-20
+Signed-off: yes
