@@ -23,10 +23,11 @@ class ReviewResult:
 
 
 class ReviewerError(Exception):
-    def __init__(self, kind: str, message: str):
+    def __init__(self, kind: str, message: str, status: int | None = None):
         super().__init__(f"{kind}: {message}")
         self.kind = kind
         self.message = message
+        self.status = status  # HTTP status when the error came from a response
 
 
 class Reviewer(Protocol):
@@ -41,4 +42,7 @@ def make_reviewer(name: str, config: Config) -> Reviewer:
     if entry["adapter"] == "mock":
         from redpen.reviewers.mock import MockReviewer
         return MockReviewer(name, entry)
+    if entry["adapter"] == "openai_compat":
+        from redpen.reviewers.openai_compat import OpenAICompatReviewer
+        return OpenAICompatReviewer(name, entry)
     raise ConfigError(f"reviewer {name!r}: adapter {entry['adapter']!r} is not available")

@@ -238,4 +238,7 @@ def make_judge_backend(name: str, config: Config) -> JudgeBackend:
     require_configured("judge", name, entry)
     if entry["adapter"] == "mock":
         return MockJudgeBackend(entry)
+    if entry["adapter"] == "openai_compat":
+        from redpen.reviewers.openai_compat import OpenAICompatJudgeBackend
+        return OpenAICompatJudgeBackend(entry)
     raise ConfigError(f"judge {name!r}: adapter {entry['adapter']!r} is not available")

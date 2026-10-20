@@ -414,12 +414,19 @@ def test_resume_reruns_judge_error_case(tmp_path, monkeypatch):
     assert sorted(calls) == [(MALFORMED, "fixed"), (MALFORMED, "vuln")]
 
 
-def test_must_not_openai_judge_unavailable_fails_before_run_dir(env, tmp_path, capsys):
+def test_must_not_openai_judge_missing_key_is_judge_error(env, tmp_path, monkeypatch):
     ds, _, results = env
+    monkeypatch.delenv("REDPEN_TEST_KEY", raising=False)
     cfg_dict = base_config()
     cfg_dict["judges"]["llm"] = {"adapter": "openai_compat", "base_url": "http://judge.invalid",
                                  "model": "judge-model", "api_key_env": "REDPEN_TEST_KEY"}
     cfg = write_config(tmp_path, cfg_dict)
-    assert run(ds, cfg, results, "--judge", "llm") == 2
-    assert "is not available" in capsys.readouterr().err
-    assert run_dirs(results) == []
+    assert run(ds, cfg, results, "--judge", "llm") == 1
+    rd = only_run(results)
+    for cid in ALL_IDS:
+        rec = load(rd / "cases" / f"{cid}.json")
+        for side in ("vuln", "fixed"):
+            assert rec[side]["status"] == "judge_error"
+            assert "env var REDPEN_TEST_KEY is not set" in rec[side]["judge"]["error"]
+        assert rec["vuln"]["verdict"] is None
+        assert rec["pair_credit"] is None

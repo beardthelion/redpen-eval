@@ -275,12 +275,12 @@ def test_make_judge_backend_mock():
     assert isinstance(make_judge_backend("mock", cfg), MockJudgeBackend)
 
 
-def test_must_not_openai_judge_not_available_yet():
+def test_make_judge_backend_openai_compat():
+    from redpen.reviewers.openai_compat import OpenAICompatJudgeBackend
     entry = {"adapter": "openai_compat", "base_url": "http://x.invalid", "model": "m",
              "api_key_env": "K"}
     cfg = Config(reviewers={}, judges={"llm": entry}, default_judge="llm")
-    with pytest.raises(ConfigError, match="not available"):
-        make_judge_backend("llm", cfg)
+    assert isinstance(make_judge_backend("llm", cfg), OpenAICompatJudgeBackend)
 
 
 def test_must_not_change_me_judge_refused():
