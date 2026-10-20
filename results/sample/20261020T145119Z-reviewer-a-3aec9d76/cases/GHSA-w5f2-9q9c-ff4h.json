@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-w5f2-9q9c-ff4h",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says no vulnerabilities were found and notes that deserialization uses typed msgspec with an allowlist. It does not claim the pickle deserialization issue is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says no vulnerabilities were found and notes that deserialization uses typed msgspec with an allowlist. It does not claim the pickle deserialization issue is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.573,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 88,
+          "prompt_tokens": 4786,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4874
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 79.311,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 5408,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 5314,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 385500000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3915,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3915
+        },
+        "total_tokens": 9323
+      }
+    },
+    "review_error": null,
+    "review_text": "No security vulnerabilities found in `ipc_wrapper.py`.\n\nDeserialization uses `msgspec.msgpack` with a typed schema, and the class loaded at lines 209–217 is chosen only from `WRAPPER_TYPES`, not from names in the payload. `Serialize` also rejects wrapper types that do not match that allowlist. No pickle, `eval`/`exec`, command execution, or path/query construction from untrusted strings appears in this file.",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 169,
+            "start": 169
+          },
+          {
+            "end": 156,
+            "start": 156
+          }
+        ],
+        "rationale": "The review flags pickle.loads on multiprocess wire bytes at line 169 as arbitrary code execution (CWE-502). It also notes the missing restricted Unpickler or allowlist, which is the same missing guard and weakness as the ground truth. It additionally cites line 156 for the pickle.dumps counterpart.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":169,\"end\":169},{\"start\":156,\"end\":156}],\"rationale\":\"The review flags pickle.loads on multiprocess wire bytes at line 169 as arbitrary code execution (CWE-502). It also notes the missing restricted Unpickler or allowlist, which is the same missing guard and weakness as the ground truth. It additionally cites line 156 for the pickle.dumps counterpart.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.612,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 159,
+          "prompt_tokens": 4093,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4252
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 11.22,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 769,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 636,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 95780000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3346,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3346
+        },
+        "total_tokens": 4115
+      }
+    },
+    "review_error": null,
+    "review_text": "**ipc_wrapper.py:169 — Insecure deserialization (CWE-502)**\n\n```169:169:ipc_wrapper.py\n          return pickle.loads(data)\n```\n\n`Deserialize` unpickles bytes from the multiprocess wire with `pickle.loads`. Pickle can run arbitrary code during load (`__reduce__` / global lookups). Anything that can place bytes on that channel can execute code in the receiving process. There is no restricted `Unpickler`, allowlist, or signature check. `Serialize` (`pickle.dumps` at line 156) is what puts that payload on the wire; the unsafe sink is the load.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

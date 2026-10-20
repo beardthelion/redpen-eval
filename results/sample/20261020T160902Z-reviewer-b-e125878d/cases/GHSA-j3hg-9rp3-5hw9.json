@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-j3hg-9rp3-5hw9",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says the size limit is enforced correctly through io.LimitReader and reports no vulnerabilities. It does not claim the missing size cap is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says the size limit is enforced correctly through io.LimitReader and reports no vulnerabilities. It does not claim the missing size cap is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.052,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 82,
+          "prompt_tokens": 2725,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2807
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 296.706,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14340,
+        "completion_tokens_details": {
+          "reasoning_tokens": 14132
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1217,
+        "total_tokens": 15557
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided Go code for security vulnerabilities. \n\nThe code is well-structured and follows secure coding practices for handling HTTP request bodies:\n- **Resource Exhaustion Prevention:** It correctly uses `io.LimitReader` alongside `io.CopyN` to enforce a strict maximum body size (`128 MB`), preventing memory and disk exhaustion attacks.\n- **Secure File Handling:** It uses `os.CreateTemp`, which securely creates temporary files with restricted `0600` permissions, preventing local privilege escalation or unauthorized access by other users on the system.\n- **Proper Cleanup:** It ensures that temporary files are reliably deleted if any error occurs during the staging process (e.g., network disconnects, disk full, or body too large).\n- **Safe Hashing:** It safely computes the SHA-256 digest in a streaming manner using `io.MultiWriter` without loading the entire payload into memory.\n\n**Conclusion:**\nI found no security vulnerabilities in the provided code.",
+    "status": "scored"
+  },
+  "guard_class": "size-cap",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 46,
+            "start": 46
+          }
+        ],
+        "rationale": "The review flags line 46, where io.Copy reads the entire request body into a temp file with no size limit. It recommends io.LimitReader or http.MaxBytesReader and describes the resulting DoS through resource exhaustion. This is the same missing size-cap guard and weakness as the known vulnerability.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":46,\"end\":46}],\"rationale\":\"The review flags line 46, where io.Copy reads the entire request body into a temp file with no size limit. It recommends io.LimitReader or http.MaxBytesReader and describes the resulting DoS through resource exhaustion. This is the same missing size-cap guard and weakness as the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.305,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 140,
+          "prompt_tokens": 2119,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2259
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 18.884,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 1701,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1549
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 790,
+        "total_tokens": 2491
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n- **File:** body.go\n- **Line:** 46\n- **Vulnerability class:** Denial of Service (Unrestricted Resource Consumption)\n- **Quote:** `size, err := io.Copy(io.MultiWriter(temporary, digest), request.Body)`\n\n**Explanation:** \nThe function reads the entire HTTP request body and writes it to a temporary file on disk without enforcing any size limits (e.g., using `io.LimitReader` or `http.MaxBytesReader`). A malicious actor can exploit this by sending an excessively large request body, which will consume all available disk space or exhaust server resources, leading to a Denial of Service (DoS).",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

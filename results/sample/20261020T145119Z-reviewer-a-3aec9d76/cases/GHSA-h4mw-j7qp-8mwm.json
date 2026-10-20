@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-h4mw-j7qp-8mwm",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review explicitly acknowledges that --resume and --session-id correctly use the --flag=value form, so it does not claim the patched vulnerability is still present. Finding 2 says the two-token pattern in extra_args (line 436) 'reopens that bug for every flag, including --resume'. That is a claim about the generic extra_args sink, not about the fixed code at lines 357-361. The review's closing sentence confirms --resume/--session-id are handled correctly. Its other findings, including the two-token pattern for other flags, are separate issues.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review explicitly acknowledges that --resume and --session-id correctly use the --flag=value form, so it does not claim the patched vulnerability is still present. Finding 2 says the two-token pattern in extra_args (line 436) 'reopens that bug for every flag, including --resume'. That is a claim about the generic extra_args sink, not about the fixed code at lines 357-361. The review's closing sentence confirms --resume/--session-id are handled correctly. Its other findings, including the two-token pattern for other flags, are separate issues.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.781,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 208,
+          "prompt_tokens": 5884,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 6092
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 181.199,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 15537,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 14531,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 991760000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3841,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3841
+        },
+        "total_tokens": 19378
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has several security vulnerabilities, mostly around argument injection and fail-open permission handling.\n\n**1. CWE-88 Argument Injection**  \nFile: `subprocess_cli.py`, line 433  \nQuote: `cmd.append(f\"--{flag}\")`  \n`extra_args` keys are interpolated into `--{flag}` with no allowlist or character check. A key containing `=` becomes a single injected flag token and can set any CLI option.\n\n**2. CWE-88 Argument Injection**  \nFile: `subprocess_cli.py`, line 436  \nQuote: `cmd.extend([f\"--{flag}\", str(value)])`  \nValues use the two-token form that lines 352–356 say lets a dash-leading value be parsed as its own flag. This reopens that bug for every flag, including `--resume`.\n\n**3. CWE-88 Argument Injection**  \nFile: `subprocess_cli.py`, line 347  \nQuote: `cmd.extend([\"--permission-mode\", self._options.permission_mode])`  \nA security-sensitive mode is passed as a separate argv token with no enum check. If the CLI does not bind a dash-leading token to this flag, the value is parsed as a new flag. Same pattern at lines 291, 366, and 398 (`--system-prompt`, `--settings`, `--mcp-config`).\n\n**4. CWE-74 Improper neutralization (allowlist injection)**  \nFile: `subprocess_cli.py`, line 318  \nQuote: `cmd.extend([\"--allowedTools\", \",\".join(effective_allowed_tools)])`  \nTool names are comma-joined and not escaped. A name that contains a comma is split by the CLI into extra allowed tools, widening the allowlist.\n\n**5. CWE-74 Improper neutralization (denylist bypass)**  \nFile: `subprocess_cli.py`, line 327  \nQuote: `cmd.extend([\"--disallowedTools\", \",\".join(self._options.disallowed_tools)])`  \nA comma inside a deny pattern is split into separate tokens, so the intended pattern is not what the CLI enforces. Line 308 (`,\".join(tools)`) has the same encoding bug for `--tools`.\n\n**6. CWE-74 Improper neutralization**  \nFile: `subprocess_cli.py`, line 419  \nQuote: `cmd.append(f\"--setting-sources={','.join(effective_setting_sources)}\")`  \nSource names are comma-joined with no allowlist. An extra source name can cause user or project settings (including hooks) to be loaded.\n\n**7. CWE-754 Fail-open permission control**  \nFile: `subprocess_cli.py`, line 317  \nQuote: `if effective_allowed_tools:`  \nAn empty allowlist is omitted. Unlike an empty `--tools` list, which is explicitly sent as `\"\"` (line 306), omitting `--allowedTools` leaves the CLI default in place, so “allow nothing” is not enforced.\n\n**8. CWE-754 Fail-open safety limit**  \nFile: `subprocess_cli.py`, line 320  \nQuote: `if self._options.max_turns:`  \n`0` is falsy, so `--max-turns` is dropped and the turn limit is not applied. `max_budget_usd` correctly uses `is not None` (line 323).\n\n**9. CWE-78 OS command injection (passthrough)**  \nFile: `subprocess_cli.py`, line 386  \nQuote: `servers_for_cli[name] = config`  \nExternal MCP configs are forwarded as-is, including `command` and `args` the CLI will spawn. SDK entries strip `instance`; external entries are not restricted. Line 398 passes a string or path through the same `--mcp-config` sink with no validation.\n\n**10. CWE-73 External control of file name**  \nFile: `subprocess_cli.py`, line 295  \nQuote: `cmd.extend([\"--system-prompt-file\", cast(SystemPromptFile, sp)[\"path\"]])`  \nThe path is not confined to a base directory, so the CLI can be pointed at an arbitrary file and its contents used as the system prompt.\n\n**11. CWE-829 Inclusion of untrusted functionality**  \nFile: `subprocess_cli.py`, line 425  \nQuote: `cmd.extend([\"--plugin-dir\", plugin[\"path\"]])`  \nOnly `type == \"local\"` is checked. The path is unconstrained, so the CLI loads and runs plugin code from any directory.\n\nList-form argv avoids shell metacharacter injection, and `--resume` / `--session-id` correctly use `--flag=value`. Those controls do not cover `extra_args` or the other sinks above.",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The known vulnerability is that --resume/--session-id (lines 352-356) are passed as two argv tokens, so a dash-leading value is parsed as a separate flag. The review never mentions those lines or the two-token problem for dash-leading values. Finding 2 covers extra_args flag injection and finding 1 covers comma-joined values, which are different weaknesses. Finding 2's line 431 uses the same two-token pattern, but the review frames it as an unrestricted flag name, not a dash-leading value injecting a flag, and it does not involve resume or session-id. No finding matches this vulnerability.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The known vulnerability is that --resume/--session-id (lines 352-356) are passed as two argv tokens, so a dash-leading value is parsed as a separate flag. The review never mentions those lines or the two-token problem for dash-leading values. Finding 2 covers extra_args flag injection and finding 1 covers comma-joined values, which are different weaknesses. Finding 2's line 431 uses the same two-token pattern, but the review frames it as an unrestricted flag name, not a dash-leading value injecting a flag, and it does not involve resume or session-id. No finding matches this vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.894,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 228,
+          "prompt_tokens": 5399,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5627
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 67.399,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 5880,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 5118,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 410280000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3738,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3738
+        },
+        "total_tokens": 9618
+      }
+    },
+    "review_error": null,
+    "review_text": "The command is built as an argv list, so this function does not have classic shell injection. These issues are still present if option values can be influenced by untrusted input.\n\n**1. CWE-88 (argument injection / security-control bypass)** — `subprocess_cli.py:308`, `:318`, `:327`, `:339`, `:414`  \nComma-joined security options are not escaped or rejected. A value containing `,` becomes extra tokens after the CLI splits, so an allowlist can be widened or a denylist entry can fail to match.\n\n```308:308:subprocess_cli.py\n                      cmd.extend([\"--tools\", \",\".join(tools)])\n```\n\n```318:318:subprocess_cli.py\n              cmd.extend([\"--allowedTools\", \",\".join(effective_allowed_tools)])\n```\n\n```327:327:subprocess_cli.py\n              cmd.extend([\"--disallowedTools\", \",\".join(self._options.disallowed_tools)])\n```\n\n```339:339:subprocess_cli.py\n              cmd.extend([\"--betas\", \",\".join(self._options.betas)])\n```\n\n```414:414:subprocess_cli.py\n              cmd.append(f\"--setting-sources={','.join(effective_setting_sources)}\")\n```\n\n**2. CWE-88 (arbitrary flag injection)** — `subprocess_cli.py:425`–`:431`  \n`extra_args` is appended with no allowlist and no check that `flag` is a safe token. Because these flags come last, they can override earlier `--permission-mode`, `--allowedTools`, `--disallowedTools`, or `--settings`.\n\n```428:431:subprocess_cli.py\n                  cmd.append(f\"--{flag}\")\n              else:\n                  # Flag with value\n                  cmd.extend([f\"--{flag}\", str(value)])\n```\n\n**3. CWE-78 / CWE-829 (indirect command execution)** — `subprocess_cli.py:375`–`:377`, `:388`, `:393`  \nMCP configs are forwarded after stripping only `instance`. Typical `command` / `args` fields are left intact and passed to `--mcp-config`, so the child CLI can spawn an attacker-chosen process. The string/Path branch is not validated either.\n\n```375:377:subprocess_cli.py\n                          sdk_config: dict[str, object] = {\n                              k: v for k, v in config.items() if k != \"instance\"\n                          }\n```\n\n```388:388:subprocess_cli.py\n                              json.dumps({\"mcpServers\": servers_for_cli}),\n```\n\n```393:393:subprocess_cli.py\n                  cmd.extend([\"--mcp-config\", str(self._options.mcp_servers)])\n```\n\n**4. CWE-829 (untrusted code load)** — `subprocess_cli.py:420`  \nPlugin directories are passed through with no path allowlist. A local plugin path can make the CLI load and run code from an attacker-controlled directory.\n\n```420:420:subprocess_cli.py\n                      cmd.extend([\"--plugin-dir\", plugin[\"path\"]])\n```\n\n**5. CWE-22 (arbitrary file read)** — `subprocess_cli.py:295`  \n`cast` does not validate at runtime. `--system-prompt-file` will cause the CLI to read whatever path is supplied, including sensitive files, and that content can enter the model context.\n\n```295:295:subprocess_cli.py\n                  cmd.extend([\"--system-prompt-file\", cast(SystemPromptFile, sp)[\"path\"]])\n```",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

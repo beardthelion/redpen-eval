@@ -1,0 +1,127 @@
+{
+  "case_id": "GHSA-v75v-6fpf-gvw8",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is reflected XSS from an unescaped Action/dtid message. The code now applies html.EscapeString(msg) at line 186. The review reports only CSRF and state-changing GET issues, which are unrelated. It makes no claim about unescaped reflection of the message.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is reflected XSS from an unescaped Action/dtid message. The code now applies html.EscapeString(msg) at line 186. The review reports only CSRF and state-changing GET issues, which are unrelated. It makes no claim about unescaped reflection of the message.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.653,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 127,
+          "prompt_tokens": 4983,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5110
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 41.225,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4121,
+        "completion_tokens_details": {
+          "reasoning_tokens": 3638
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2835,
+        "total_tokens": 6956
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1\n- **File:** twopcz.go\n- **Line:** 142-149\n- **Vulnerability Class:** Cross-Site Request Forgery (CSRF) / State-changing GET request\n- **Quote:** \n  ```go\n  \tswitch action {\n  \tcase \"Discard\", \"Rollback\":\n  \t\terr = txe.RollbackPrepared(dtid, 0)\n  \tcase \"Commit\":\n  \t\terr = txe.CommitPrepared(dtid)\n  \tcase \"Conclude\":\n  \t\terr = txe.ConcludeTransaction(dtid)\n  \t}\n  ```\n**Description:** The HTTP handler performs sensitive, state-changing operations (rolling back, committing, or concluding transactions) based on parameters read via `r.FormValue()`. Because the handler does not restrict the HTTP method (e.g., requiring `POST`) and lacks anti-CSRF tokens, it is vulnerable to Cross-Site Request Forgery. An attacker could trick an authenticated user with debugging privileges into visiting a crafted URL (e.g., `http://server/twopcz?Action=Rollback&dtid=123`), which would execute the action without the user's consent.\n\n### Finding 2\n- **File:** twopcz.go\n- **Lines:** 81, 102, 126\n- **Vulnerability Class:** Cross-Site Request Forgery (CSRF) / State-changing GET request\n- **Quotes:** \n  ```go\n  81: \t\t<td><form>\n  ```\n  ```go\n  102: \t\t<td><form>\n  ```\n  ```go\n  126: \t\t<td><form>\n  ```\n**Description:** The HTML forms defined in the templates do not specify a `method` attribute, meaning they default to making `GET` requests. Using `GET` requests for state-changing actions violates HTTP semantics (which state that `GET` should be idempotent) and facilitates the CSRF vulnerability mentioned above. These forms should be updated to use `method=\"POST\"` and include a CSRF token.",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 152,
+            "start": 152
+          },
+          {
+            "end": 154,
+            "start": 154
+          },
+          {
+            "end": 185,
+            "start": 185
+          }
+        ],
+        "rationale": "Finding 1 reports reflected XSS: the Action and dtid values are formatted into msg and written unescaped to the HTML response via fmt.Fprintln(w, msg). This is the same missing-escaping weakness as the ground truth. The CSRF finding is a different bug and is ignored.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":152,\"end\":152},{\"start\":154,\"end\":154},{\"start\":185,\"end\":185}],\"rationale\":\"Finding 1 reports reflected XSS: the Action and dtid values are formatted into msg and written unescaped to the HTML response via fmt.Fprintln(w, msg). This is the same missing-escaping weakness as the ground truth. The CSRF finding is a different bug and is ignored.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.509,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 160,
+          "prompt_tokens": 5043,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5203
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 35.774,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 3650,
+        "completion_tokens_details": {
+          "reasoning_tokens": 3096
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2820,
+        "total_tokens": 6470
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Reflected Cross-Site Scripting (XSS)\n- **File:** twopcz.go\n- **Lines:** 152, 154, 185\n- **Vulnerability Class:** Reflected Cross-Site Scripting (XSS)\n- **Description:** The HTTP handler reads the `Action` and `dtid` parameters directly from the user's request and formats them into the `msg` string. Later, this unescaped string is written directly to the HTTP response writer (`w`) as HTML. An attacker can craft a malicious URL containing JavaScript payloads in the `Action` or `dtid` parameters, which will be executed in the victim's browser when they visit the link.\n- **Quotes:**\n  ```go\n  152: \t\t\tmsg = fmt.Sprintf(\"%s(%s): %v\", r.FormValue(\"Action\"), dtid, err)\n  ```\n  ```go\n  154: \t\t\tmsg = fmt.Sprintf(\"%s(%s): completed.\", r.FormValue(\"Action\"), dtid)\n  ```\n  ```go\n  185: \t\tfmt.Fprintln(w, msg)\n  ```\n\n### 2. Cross-Site Request Forgery (CSRF)\n- **File:** twopcz.go\n- **Lines:** 141-148\n- **Vulnerability Class:** Cross-Site Request Forgery (CSRF)\n- **Description:** The endpoint performs sensitive, state-changing operations (such as rolling back, committing, or concluding transactions) based on request parameters. Because it uses `r.FormValue`, it accepts these parameters via simple `GET` or `POST` requests without requiring any anti-CSRF tokens. If an authenticated administrator is tricked into visiting a malicious page, an attacker can forge requests to this endpoint to manipulate database transactions.\n- **Quote:**\n  ```go\n  141: \tswitch action {\n  142: \tcase \"Discard\", \"Rollback\":\n  143: \t\terr = txe.RollbackPrepared(dtid, 0)\n  144: \tcase \"Commit\":\n  145: \t\terr = txe.CommitPrepared(dtid)\n  146: \tcase \"Conclude\":\n  147: \t\terr = txe.ConcludeTransaction(dtid)\n  148: \t}\n  ```",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

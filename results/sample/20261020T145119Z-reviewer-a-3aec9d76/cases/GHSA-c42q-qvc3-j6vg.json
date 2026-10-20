@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-c42q-qvc3-j6vg",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review explicitly says link and image URLs are sanitized through sanitizeUrl, so it does not claim the unsanitized href/src vulnerability is still present. Its two findings concern component dispatch lookup and tag lookup via the prototype chain, which are unrelated issues.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review explicitly says link and image URLs are sanitized through sanitizeUrl, so it does not claim the unsanitized href/src vulnerability is still present. Its two findings concern component dispatch lookup and tag lookup via the prototype chain, which are unrelated issues.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.084,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 123,
+          "prompt_tokens": 3860,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3983
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 430.844,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 32929,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 32473,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 2021060000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3130,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3130
+        },
+        "total_tokens": 36059
+      }
+    },
+    "review_error": null,
+    "review_text": "The primary XSS sinks in this file are defended: raw HTML goes through DOMPurify, link and image URLs go through `sanitizeUrl`, and text is assigned with `createTextNode` and `innerText`. Two lookup bugs remain.\n\n**Finding 1**\n- File: tina-markdown.js\n- Line: 81\n- Class: CWE-470 (externally controlled component dispatch)\n- Quote: `if (override) return override(node);`\n\n`node.name` comes from the parsed `content` attribute and is used as a key with no own-property check:\n\n```80:81:tina-markdown.js\n      const override = TinaMarkdown.components[node.name];\n      if (override) return override(node);\n```\n\nInherited names such as `constructor`, `toString`, and `__defineSetter__` resolve to built-in functions and are invoked. Those calls throw or return a non-Node, and `appendChild` then throws, so a crafted AST can break rendering. Any function actually registered on `TinaMarkdown.components` can also be selected by content and is inserted into the shadow DOM with no sanitization of `node` or of the return value.\n\n**Finding 2**\n- File: tina-markdown.js\n- Line: 74\n- Class: CWE-470 / CWE-79 (tag allowlist bypass via prototype chain; XSS only if `Object.prototype` is polluted)\n- Quote: `const el = document.createElement(tag);`\n\n```72:74:tina-markdown.js\n    const tag = TAGS[node.type];\n    /** @type {HTMLElement} */\n    const el = document.createElement(tag);\n```\n\n`node.type` is an attacker-controlled key and is not checked with `Object.hasOwn`. Own keys in `TAGS` are safe. Inherited keys such as `constructor`, `toString`, and `__proto__` make `createElement` throw (`InvalidCharacterError`), which aborts `connectedCallback`. If `Object.prototype` has been polluted with a string tag name, this creates that element. A polluted `\"script\"` value plus child text is inserted into the document and runs.",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 75,
+            "start": 75
+          },
+          {
+            "end": 76,
+            "start": 76
+          }
+        ],
+        "rationale": "Findings 1 and 2 identify that node.url is assigned to el.href (line 75) and el.src (line 76) with no scheme sanitization, and recommend a scheme allowlist. This is the same missing guard and weakness as the reference vulnerability. Finding 3 (recursion) is a different bug and is ignored.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":75,\"end\":75},{\"start\":76,\"end\":76}],\"rationale\":\"Findings 1 and 2 identify that node.url is assigned to el.href (line 75) and el.src (line 76) with no scheme sanitization, and recommend a scheme allowlist. This is the same missing guard and weakness as the reference vulnerability. Finding 3 (recursion) is a different bug and is ignored.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.737,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 158,
+          "prompt_tokens": 3777,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3935
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 240.823,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 16194,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 15768,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1016380000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3101,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3101
+        },
+        "total_tokens": 19295
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has three security issues. The text and code-block paths are safe (`createTextNode` and `innerText`). Raw `html` and `html_inline` nodes are passed through DOMPurify. The problems are unvalidated URLs and unbounded recursion on attacker-controlled AST input.\n\n**1. Cross-site scripting (CWE-79)**\nFile: `tina-markdown.js`, line 75\n`if (node.url && node.type === 'a') el.href = node.url;`\n`node.url` comes from the `content` attribute via `JSON.parse` and is assigned to `href` with no scheme check. A stored `javascript:` (or similar) URL runs as script when the link is activated. Shadow DOM does not stop that. DOMPurify is not used on this path.\n\n**2. Unvalidated URL scheme (CWE-20)**\nFile: `tina-markdown.js`, line 76\n`if (node.url && node.type === 'img') el.src = node.url;`\n`img` `src` is taken from the same untrusted field with no allowlist. In current browsers this is weaker than the anchor case (`javascript:` in `img` `src` usually does not run), but non-http(s) schemes are still accepted, including legacy webviews and `data:` URLs.\n\n**3. Uncontrolled recursion (CWE-674)**\nFile: `tina-markdown.js`, line 116\n`el.appendChild(renderNode(child));`\n`renderNode` walks `children` with no depth limit (same pattern at lines 54 and 109). The tree is attacker-controlled JSON from line 173. Deep nesting can overflow the stack and hang or crash the viewer tab. `JSON.parse` cannot create cycles, so this is depth exhaustion, not a cycle.\n\nAllowlist schemes before setting `href` or `src` (for example `http`, `https`, `mailto`, and relative URLs) using the URL parser, and cap AST depth before rendering.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

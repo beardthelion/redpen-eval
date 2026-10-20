@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-685w-q87j-wqw3",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review explicitly says the by-digest verification is sound, so it does not claim the missing hash check is still present. Its findings are about the contentDgst out-parameter being set from an unverified header (lines 585-590) and an unbounded io.ReadAll. Those are different issues from the patched one, where the body was unmarshalled without verification against the requested digest. The contentDgst point is related but concerns a separate out-parameter, not the manifest content check.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review explicitly says the by-digest verification is sound, so it does not claim the missing hash check is still present. Its findings are about the contentDgst out-parameter being set from an unverified header (lines 585-590) and an unbounded io.ReadAll. Those are different issues from the patched one, where the body was unmarshalled without verification against the requested digest. The contentDgst point is related but concerns a separate out-parameter, not the manifest content check.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.793,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 176,
+          "prompt_tokens": 3288,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3464
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 112.936,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 7425,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 7063,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 480940000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2636,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2636
+        },
+        "total_tokens": 10061
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has two security issues. The digest check on the by-digest path is sound, but the content-digest out-parameter still trusts an unverified header, and the body read is unbounded.\n\n**1. repository.go:586 — CWE-345 (Insufficient Verification of Data Authenticity)**\n```\ndgst, err := digest.Parse(resp.Header.Get(\"Docker-Content-Digest\"))\n```\n`*contentDgst` is set from the `Docker-Content-Digest` header with no hash of `body`. That assignment runs for both tag and digest fetches, and it runs before the by-digest check. The comments at 597–601 say this header can be forged by a malicious registry or a MITM. A caller that trusts `contentDgst` for pinning, admission, or later blob fetches can be pointed at a digest the bytes do not have. On a digest fetch, the body can match the requested `dgst` while `*contentDgst` still receives a different header value. Parse failure is ignored, so a missing or malformed header also leaves the out-parameter unset while the manifest is still returned.\n\n**2. repository.go:592 — CWE-400 / CWE-770 (Uncontrolled resource consumption)**\n```\nbody, err := io.ReadAll(resp.Body)\n```\nThe response body is buffered with no size cap. A hostile registry can send a very large manifest (or a gzip body that `http.Client` decompresses before this read) and exhaust memory. Manifest responses should be capped (OCI clients typically limit them to a few MiB) via `http.MaxBytesReader` or `io.LimitReader` before `ReadAll` and `UnmarshalManifest`.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 592,
+            "start": 592
+          },
+          {
+            "end": 541,
+            "start": 539
+          }
+        ],
+        "rationale": "Finding 3 describes the known vulnerability. It says the body is unmarshalled at line 592 without checking that its digest equals the requested dgst, so a substituted manifest is accepted. That is the missing digest verification of returned bytes. Finding 2 also touches the forged Docker-Content-Digest header but frames it as storing an unverified header; finding 3 is the clearer match, so only its cited lines are reported. Finding 1 (unbounded read) is a different bug.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":592,\"end\":592},{\"start\":539,\"end\":541}],\"rationale\":\"Finding 3 describes the known vulnerability. It says the body is unmarshalled at line 592 without checking that its digest equals the requested dgst, so a substituted manifest is accepted. That is the missing digest verification of returned bytes. Finding 2 also touches the forged Docker-Content-Digest header but frames it as storing an unverified header; finding 3 is the clearer match, so only its cited lines are reported. Finding 1 (unbounded read) is a different bug.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.355,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 208,
+          "prompt_tokens": 2691,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2899
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 60.9,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4227,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 3969,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 281860000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2276,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2276
+        },
+        "total_tokens": 6503
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has three security vulnerabilities.\n\n1. File: `repository.go`, line 588. Vulnerability class: Uncontrolled Resource Consumption (CWE-400). The line is `body, err := io.ReadAll(resp.Body)`. The response body is read with no size cap, so a hostile registry can exhaust memory.\n\n2. File: `repository.go`, line 582. Vulnerability class: Insufficient Verification of Data Authenticity (CWE-345). The line is `dgst, err := digest.Parse(resp.Header.Get(\"Docker-Content-Digest\"))`. The `Docker-Content-Digest` header is parsed and, on line 584 (`*contentDgst = dgst`), stored without hashing the body. A malicious registry or a man-in-the-middle can present a digest that does not match the payload.\n\n3. File: `repository.go`, line 592. Vulnerability class: Insufficient Verification of Data Authenticity (CWE-345). The line is `m, _, err := distribution.UnmarshalManifest(mt, body)`. When the caller requested `dgst` (lines 539–541), the body is unmarshalled without checking that its digest equals `dgst`, so a substituted manifest is accepted.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

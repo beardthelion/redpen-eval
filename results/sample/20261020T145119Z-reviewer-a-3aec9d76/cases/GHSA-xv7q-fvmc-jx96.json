@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-xv7q-fvmc-jx96",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched code gates email fallback on both provider.EmailFallback and cl.EmailVerified (lines 408-414, 436). The review does not claim that an unverified email can still link an account through the email fallback. Finding 4 concerns username-fallback linking via preferred_username or subject, which is separate, intended behavior. Finding 5 concerns overwriting the email of an already-linked issuer/subject user. Neither describes the patched flaw, so no finding counts.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched code gates email fallback on both provider.EmailFallback and cl.EmailVerified (lines 408-414, 436). The review does not claim that an unverified email can still link an account through the email fallback. Finding 4 concerns username-fallback linking via preferred_username or subject, which is separate, intended behavior. Finding 5 concerns overwriting the email of an already-linked issuer/subject user. Neither describes the patched flaw, so no finding counts.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 6.013,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 444,
+          "prompt_tokens": 14692,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 15136
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 169.591,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 12402,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 11106,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 932660000,
+        "num_sources_used": 0,
+        "prompt_tokens": 10291,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 10291
+        },
+        "total_tokens": 22693
+      }
+    },
+    "review_error": null,
+    "review_text": "Security review of `openid.go` found several issues. Findings below cite the given line numbers.\n\n1. **File:** `openid.go` **Line:** 376 **Class:** SSRF (CWE-918)  \n   **Quote:** `avatarData, err := utils.DownloadImage(pictureURL)`  \n   `pictureURL` is the IdP `picture` claim (`cl.Picture`), used with no scheme, host, or private-address check in this function. A user-controlled or compromised claim makes the server fetch arbitrary URLs (internal hosts, link-local metadata). The fetch runs in `getOrCreateUser` before the TOTP gate, so a failed second factor still triggers it.\n\n2. **File:** `openid.go` **Line:** 619 **Class:** Unvalidated OAuth `redirect_uri` (CWE-601)  \n   **Quote:** `provider.Oauth2Config.RedirectURL = cb.RedirectURL`  \n   `RedirectURL` is taken from the request body (`Callback.RedirectURL`) and passed into the token exchange with no allowlist check in this file.\n\n3. **File:** `openid.go` **Line:** 619 **Class:** Race on shared OAuth config (CWE-362)  \n   **Quote:** `provider.Oauth2Config.RedirectURL = cb.RedirectURL`  \n   `Oauth2Config` is a pointer on a provider object that is reused across requests. Assigning `RedirectURL` mutates shared state, so concurrent callbacks can overwrite each other’s redirect URI before `Exchange`.\n\n4. **File:** `openid.go` **Line:** 430 **Class:** Account takeover via username linking (CWE-287)  \n   **Quote:** `searches = append(searches, &user.User{Issuer: user.IssuerLocal, Username: preferred, Email: fallbackEmail})`  \n   With `UsernameFallback`, lookup uses `preferred_username` (and, at line 426, `idToken.Subject`). `fallbackEmail` is empty unless email fallback is on **and** `email_verified` is true, and `GetUserWithEmail` ignores empty fields. An unverified email therefore does not block a username-only match, so an IdP user who can set `preferred_username` to a local username is linked to that local account. That bypasses the verified-email restriction described at lines 406–408.\n\n5. **File:** `openid.go` **Line:** 507 **Class:** Use of unverified identity claim (CWE-345)  \n   **Quote:** `u.Email = cl.Email`  \n   For an existing issuer/subject user, email (and name at line 510, `ExtraSettingsLinks` at line 513) is overwritten from token claims with no `EmailVerified` check. The verified-email guard is only applied on the fallback-link path.\n\n6. **File:** `openid.go` **Line:** 272 **Class:** Sensitive updates committed when authentication fails (CWE-306)  \n   **Quote:** `if commitErr := s.Commit(); commitErr != nil {`  \n   Any error from `enforceTOTPIfRequired`, including a missing or bad TOTP code, commits the session. Profile updates and avatar sync in `getOrCreateUser` (lines 506–522) already ran, and team sync is the only mutation ordered after the TOTP check (lines 267–270). A failed 2FA attempt still persists email, name, settings links, and avatar changes; line 276 then dispatches those events.\n\n7. **File:** `openid.go` **Line:** 621 **Class:** Missing OAuth `state` check (CWE-352)  \n   **Quote:** `oauth2Token, err := provider.Oauth2Config.Exchange(context.Background(), cb.Code)`  \n   `Callback` (lines 48–55) has no `state` field, and the exchange uses only `cb.Code`. There is no server-side binding of the callback to the authorization request, so this endpoint is open to login CSRF.\n\n8. **File:** `openid.go` **Line:** 654 **Class:** Missing OIDC nonce verification (CWE-294)  \n   **Quote:** `idToken, err := verifier.Verify(context.Background(), rawIDToken)`  \n   The verifier is built with only `ClientID` (line 651). `go-oidc` does not check `nonce` unless the caller does, and this path never reads `idToken.Nonce`. The ID token is not bound to the authorization request.\n\n9. **File:** `openid.go` **Line:** 647 **Class:** Sensitive data in logs (CWE-532)  \n   **Quote:** `log.Debugf(\"Could not get id_token, raw token is %v\", oauth2Token)`  \n   `%v` on `*oauth2.Token` includes access token, refresh token, and extras such as `id_token`. Lines 629 and 634 also log the provider error body (`rerr.Body` / `err`), which can contain token-endpoint secrets. Line 634 is `Errorf`, so it is not limited to debug.\n\n10. **File:** `openid.go` **Line:** 207 **Class:** Information exposure (CWE-209)  \n    **Quote:** `\"details\": detailedErr.Details,`  \n    The provider token-error JSON is parsed (lines 626–637) and returned to the client. That body can include IdP configuration and request details that should not be echoed to the caller.\n\n11. **File:** `openid.go` **Line:** 314 **Class:** Uncaught panic / denial of service (CWE-248)  \n    **Quote:** `name = t[\"name\"].(string)`  \n    The same pattern is used for `description` (line 320) and `isPublic` (line 326). These values come from the `vikunja_groups` claim. A non-string or non-bool value panics the handler. `oidcID` is type-switched (lines 332–341); these fields are not.",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 390,
+            "start": 390
+          },
+          {
+            "end": 414,
+            "start": 414
+          }
+        ],
+        "rationale": "Finding 3 reports account takeover through email-fallback linking where `email_verified` is never read or required. That is the same missing verified-email guard as the ground truth. It quotes `fallbackEmail = cl.Email` at line 390 and the email-only lookup at line 414.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":390,\"end\":390},{\"start\":414,\"end\":414}],\"rationale\":\"Finding 3 reports account takeover through email-fallback linking where `email_verified` is never read or required. That is the same missing verified-email guard as the ground truth. It quotes `fallbackEmail = cl.Email` at line 390 and the email-only lookup at line 414.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.364,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 142,
+          "prompt_tokens": 13751,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 13893
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 138.257,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 11521,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 10613,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 871960000,
+        "num_sources_used": 0,
+        "prompt_tokens": 9995,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1280,
+          "image_tokens": 0,
+          "text_tokens": 9995
+        },
+        "total_tokens": 21516
+      }
+    },
+    "review_error": null,
+    "review_text": "Security review of `openid.go` found several vulnerabilities. Each is listed below with the file, line, class, and the quoted line.\n\n1. **SSRF (CWE-918)** — `openid.go:355`  \n   The avatar URL comes from the IdP `picture` claim and is fetched server-side with no allowlist, scheme check, or block of private, link-local, or metadata addresses. A user or IdP that can set `picture` can make the server request internal endpoints.  \n   Quote: `avatarData, err := utils.DownloadImage(pictureURL)`\n\n2. **2FA bypass for account mutation (CWE-306)** — `openid.go:251`  \n   `getOrCreateUser` updates email, name, extra settings, and avatar before TOTP is checked. On TOTP failure the session is still committed, so a valid auth code without a valid passcode can change the account. Team sync is correctly deferred; profile writes are not.  \n   Quote: `if commitErr := s.Commit(); commitErr != nil {`  \n   Related write: `openid.go:484` — `u.Email = cl.Email`\n\n3. **Account takeover via unverified identity linking (CWE-290)** — `openid.go:390`  \n   With `EmailFallback` or `UsernameFallback`, a local user is linked by email, `sub`, or `preferred_username`. `email_verified` is never read or required, so an IdP that does not verify email, or a colliding username, can authenticate as that local account.  \n   Quote: `fallbackEmail = cl.Email`  \n   Also `openid.go:414`: `searches = append(searches, &user.User{Issuer: user.IssuerLocal, Email: cl.Email})`\n\n4. **Unvalidated OAuth `redirect_uri` and shared-config race (CWE-601 / CWE-362)** — `openid.go:595`  \n   `redirect_uri` is taken from the client body and written onto `provider.Oauth2Config` with no allowlist. If that config is shared across requests, one caller can overwrite another’s redirect URI (failed logins, or a poisoned URI if the same config later builds authorize URLs).  \n   Quote: `provider.Oauth2Config.RedirectURL = cb.RedirectURL`\n\n5. **Login CSRF / missing OAuth `state` binding (CWE-352)** — `openid.go:49`  \n   `Callback` has `code` and `redirect_url` but no `state`. The callback never checks `state` or the ID token `nonce` (`Verifier` at line 627 only sets `ClientID`). A code obtained for the attacker’s IdP login can be submitted to bind the victim’s session to the attacker.  \n   Quote: `Code        string `query:\"code\" json:\"code\"``\n\n6. **Denial of service via unchecked type assertion (CWE-476)** — `openid.go:293`  \n   Group `name`, `description`, and `isPublic` are asserted without a type check. A non-string or non-bool value in `vikunja_groups` panics the handler. `oidcID` is switched safely; these fields are not.  \n   Quote: `name = t[\"name\"].(string)`  \n   Same pattern: `openid.go:299` `description = t[\"description\"].(string)` and `openid.go:305` `isPublic = t[\"isPublic\"].(bool)`\n\n7. **Sensitive token logging (CWE-532)** — `openid.go:605`  \n   Provider token-endpoint bodies and the raw OAuth token are written to logs. At debug level that exposes access tokens, refresh tokens, and ID tokens.  \n   Quote: `log.Debugf(\"Raw token value is %s\", rerr.Body)`  \n   Also `openid.go:623`: `log.Debugf(\"Could not get id_token, raw token is %v\", oauth2Token)`\n\n8. **Information exposure (CWE-209)** — `openid.go:613`  \n   The IdP error JSON is parsed and returned to the client as `details`, which can leak provider-internal error data.  \n   Quote: `Details: details,`",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

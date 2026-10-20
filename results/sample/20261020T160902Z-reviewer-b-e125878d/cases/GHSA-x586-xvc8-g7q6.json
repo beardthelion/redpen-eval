@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-x586-xvc8-g7q6",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says it found no vulnerabilities. It does not claim that ResourceSerializer's $fill$ still lacks a thenable check, so it does not report the patched vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says it found no vulnerabilities. It does not claim that ResourceSerializer's $fill$ still lacks a thenable check, so it does not report the patched vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.668,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 91,
+          "prompt_tokens": 12916,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 13007
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 130.007,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14177,
+        "completion_tokens_details": {
+          "reasoning_tokens": 14035
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 10156,
+        "total_tokens": 24333
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided code and found no security vulnerabilities. \n\nThe code implements a robust serialization and deserialization mechanism for various data types used in the Qwik framework. It correctly uses prefix characters to identify types, safely handles object references, and properly escapes strings that might conflict with the prefix system. \n\nWhile providing malformed data to some deserializers (like `FormDataSerializer` or `Uint8ArraySerializer`) may cause standard JavaScript exceptions (e.g., `TypeError` or `DOMException` from `atob`), this is expected behavior during deserialization of corrupted state and does not constitute a security vulnerability (such as Prototype Pollution, Cross-Site Scripting, or Remote Code Execution).",
+    "status": "scored"
+  },
+  "guard_class": "type-range-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports no vulnerabilities. It only mentions parse errors from FormData, atob and RegExp on malformed data. It never mentions ResourceSerializer's $fill$ or the thenable problem, so it does not describe the known vulnerability.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review reports no vulnerabilities. It only mentions parse errors from FormData, atob and RegExp on malformed data. It never mentions ResourceSerializer's $fill$ or the thenable problem, so it does not describe the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.284,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 112,
+          "prompt_tokens": 12641,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 12753
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 123.864,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 13677,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13531
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 9861,
+        "total_tokens": 23538
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided code and found no security vulnerabilities. \n\nThe file implements a set of serializers and deserializers for Qwik's internal state management. While providing malformed serialized data could lead to unhandled exceptions (such as `SyntaxError` from `JSON.parse` in `FormDataSerializer`, `DOMException` from `atob` in `Uint8ArraySerializer`, or `SyntaxError` from `new RegExp` in `RegexSerializer`), these are standard behaviors for parsing invalid data and are typically caught by the framework's broader error-handling mechanisms. There are no indications of security vulnerabilities such as Cross-Site Scripting (XSS), Remote Code Execution (RCE), or Prototype Pollution.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

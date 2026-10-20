@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-637c-6jxx-4rwm",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the silent default to the operator's Kubernetes service-account token, which could leak to tenant-controlled Vault destinations. The review instead reports an arbitrary file read through credential.ServiceAccount, which is a different issue. It does not claim that the default operator SA token fallback is still present, so it does not report this vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the silent default to the operator's Kubernetes service-account token, which could leak to tenant-controlled Vault destinations. The review instead reports an arbitrary file read through credential.ServiceAccount, which is a different issue. It does not claim that the default operator SA token fallback is still present, so it does not report this vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.772,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 146,
+          "prompt_tokens": 4979,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5125
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 70.423,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6943,
+        "completion_tokens_details": {
+          "reasoning_tokens": 6688
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 3024,
+        "total_tokens": 9967
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1\n- **File:** hashicorpvault_handler.go\n- **Lines:** 164, 177\n- **Vulnerability Class:** Arbitrary File Read / Path Traversal\n- **Quotes:**\n  - `164: \t\tpath = credential.ServiceAccount`\n  - `177: \ttoken, err := readKubernetesServiceAccountProjectedToken(path)`\n\n**Description:** \nThe `credential.ServiceAccount` value is taken directly from the user-controlled configuration (likely a Custom Resource) and used as a file path without any sanitization or validation. If a user provides a path such as `../../../../etc/passwd`, the application will read the contents of that arbitrary file and send it as a JWT to the configured Vault server. An attacker who controls the Vault server (or can view its logs) can use this to exfiltrate sensitive files from the operator's pod filesystem. To fix this, the path should be strictly validated to ensure it resides within an expected directory (e.g., `/var/run/secrets/`) and does not contain directory traversal characters (`..`).",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 137,
+            "start": 137
+          }
+        ],
+        "rationale": "The first finding says the user-controlled ServiceAccount path is read without validation. It names the operator's own token at /var/run/secrets/kubernetes.io/serviceaccount/token as a target and says the contents go to an attacker-controlled Vault address. That is the same weakness: the operator's SA token can be leaked to a tenant-controlled Vault destination because no allowlist or denylist guards the token file path. The review does not point at the silent default on lines 122-127, but it covers the same missing guard and the same leak of the operator's token.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":137,\"end\":137}],\"rationale\":\"The first finding says the user-controlled ServiceAccount path is read without validation. It names the operator's own token at /var/run/secrets/kubernetes.io/serviceaccount/token as a target and says the contents go to an attacker-controlled Vault address. That is the same weakness: the operator's SA token can be leaked to a tenant-controlled Vault destination because no allowlist or denylist guards the token file path. The review does not point at the silent default on lines 122-127, but it covers the same missing guard and the same leak of the operator's token.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.923,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 215,
+          "prompt_tokens": 3411,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3626
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 44.081,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4329,
+        "completion_tokens_details": {
+          "reasoning_tokens": 3957
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1616,
+        "total_tokens": 5945
+      }
+    },
+    "review_error": null,
+    "review_text": "Here are the security vulnerabilities found in the provided code:\n\n- **File:** hashicorpvault_handler.go\n- **Line:** 137\n- **Vulnerability Class:** Arbitrary File Read / Information Disclosure\n- **Quote:** `jwt, err = readKubernetesServiceAccountProjectedToken(vh.vault.Credential.ServiceAccount)`\n- **Explanation:** The `ServiceAccount` field from the user-controlled configuration is used directly as a file path without any sanitization or validation. An attacker can supply an arbitrary file path (such as `/etc/passwd` or the operator's own service account token at `/var/run/secrets/kubernetes.io/serviceaccount/token`). The contents of this file are read and subsequently sent to an attacker-controlled Vault server (configured via `vh.vault.Address` on line 62 and sent on line 144), leading to the exposure of sensitive local files.\n\n- **File:** hashicorpvault_handler.go\n- **Line:** 134\n- **Vulnerability Class:** Privilege Escalation / Information Disclosure\n- **Quote:** `jwt = []byte(GenerateBoundServiceAccountToken(context.Background(), vh.vault.Credential.ServiceAccountName, vh.namespace, vh.acs))`\n- **Explanation:** The `ServiceAccountName` field is user-controlled. If the operator running this code has the RBAC permissions to create `TokenRequest`s for other service accounts, an attacker can specify the name of a highly privileged service account. The operator will generate a valid token for that privileged account and send it to the attacker-controlled Vault server (on line 144), allowing the attacker to steal the token and escalate their privileges within the cluster.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

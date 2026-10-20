@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-c42q-qvc3-j6vg",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says the code has no vulnerabilities and that href/src are sanitized with sanitizeUrl. It does not claim the patched URL-scheme vulnerability is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says the code has no vulnerabilities and that href/src are sanitized with sanitizeUrl. It does not claim the patched URL-scheme vulnerability is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.415,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 90,
+          "prompt_tokens": 3614,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3704
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 534.759,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 63156,
+        "completion_tokens_details": {
+          "reasoning_tokens": 62909
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2101,
+        "total_tokens": 65257
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the code and found no security vulnerabilities.\n\nThe code safely handles the rendering of a JSON AST into HTML:\n- **Cross-Site Scripting (XSS):** The code uses `DOMPurify.sanitize` to safely render raw HTML nodes. For other nodes, it uses `document.createElement` and `document.createTextNode`, which inherently protect against XSS by treating content as text rather than executable HTML.\n- **URL Sanitization:** Links (`<a>`) and images (`<img>`) have their `href` and `src` attributes sanitized using a dedicated `sanitizeUrl` function, preventing `javascript:` URI-based XSS attacks.\n- **Prototype Pollution:** The code accesses `TinaMarkdown.components[node.name]` to resolve custom components. Even if an attacker supplies a malicious `node.name` like `__proto__` or `constructor`, it will only result in a harmless `TypeError` when the code attempts to invoke or append the non-DOM node result, rather than leading to prototype pollution or arbitrary code execution.\n- **DOM Manipulation:** The code safely iterates over children and appends them using standard DOM APIs (`appendChild`), which are safe from injection attacks.",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 75,
+            "start": 75
+          }
+        ],
+        "rationale": "The review flags line 75, where node.url is assigned to el.href without scheme sanitization, and names javascript: URLs as the XSS vector. That is the same missing guard and weakness as the known vulnerability. It does not mention line 76 (img src), but the href finding matches.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":75,\"end\":75}],\"rationale\":\"The review flags line 75, where node.url is assigned to el.href without scheme sanitization, and names javascript: URLs as the XSS vector. That is the same missing guard and weakness as the known vulnerability. It does not mention line 76 (img src), but the href finding matches.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.979,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 130,
+          "prompt_tokens": 3366,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3496
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 36.014,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4054,
+        "completion_tokens_details": {
+          "reasoning_tokens": 3906
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2071,
+        "total_tokens": 6125
+      }
+    },
+    "review_error": null,
+    "review_text": "- File: tina-markdown.js\n- Line: 75\n- Vulnerability class: Cross-Site Scripting (XSS)\n- Quote: `if (node.url && node.type === 'a') el.href = node.url;`\n\n**Explanation:**\nThe code directly assigns the `url` property from the parsed JSON AST to the `href` attribute of an anchor (`<a>`) element without any sanitization or validation. An attacker can provide a malicious URL such as `javascript:alert(1)`, which will be executed in the context of the user's session when the link is clicked, leading to Stored or Reflected Cross-Site Scripting (XSS).",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

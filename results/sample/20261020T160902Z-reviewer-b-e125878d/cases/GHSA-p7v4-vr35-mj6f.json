@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-p7v4-vr35-mj6f",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the missing restore-gate check at the start of CRImportCheckpoint. The patched code now has it at lines 246-248 (EnableExperimentalRestoreViaCreate). The review never claims the gate is missing. Its findings cover a mount leak, DoS via arbitrary file open, symlink following when reading dump files, and an unchecked Seek. These are unrelated to the auth-check gate.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the missing restore-gate check at the start of CRImportCheckpoint. The patched code now has it at lines 246-248 (EnableExperimentalRestoreViaCreate). The review never claims the gate is missing. Its findings cover a mount leak, DoS via arbitrary file open, symlink following when reading dump files, and an unchecked Seek. These are unrelated to the auth-check gate.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.033,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 172,
+          "prompt_tokens": 9350,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 9522
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 110.633,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14985,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13934
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 5588,
+        "total_tokens": 20573
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Resource Leak (Missing Unmount)\n**File:** `container_checkpoint_linux.go`\n**Line:** 311\n**Vulnerability Class:** Resource Leak / Missing Release of Resource after Effective Lifetime (CWE-772)\n**Quote:** `if err := mount.All(mounts, mountPoint); err != nil {`\n**Description:** When restoring from an OCI image, the snapshot is mounted at `mountPoint`. However, if any error occurs in the subsequent code before the explicit `mount.UnmountAll` call at line 546 (e.g., failures in `ReadJSONFile`, `GetImage`, `createContainer`, or `fs.CopyDir`), the function returns early without unmounting. This leaves the snapshot mounted, leaking system resources. Furthermore, the deferred `os.RemoveAll(mountPoint)` at line 274 will fail because the directory is still an active mount point.\n\n### 2. Denial of Service via Arbitrary File Open\n**File:** `container_checkpoint_linux.go`\n**Line:** 316\n**Vulnerability Class:** Uncontrolled Resource Consumption / Denial of Service (CWE-400)\n**Quote:** `archiveFile, err = os.Open(inputImage)`\n**Description:** If `inputImage` (which originates from the user-controlled container image configuration) is not recognized as an OCI image, it falls back to being treated as a local file path and is opened directly. If an attacker specifies a blocking device path (e.g., `/dev/random` or a named pipe) as the image name, `os.Open` will succeed, and the subsequent `archive.Apply` will block indefinitely while trying to read from it, causing a Denial of Service for the CRI service.\n\n### 3. Improper Link Resolution Before File Access (Symlink Following)\n**File:** `container_checkpoint_linux.go`\n**Line:** 368\n**Vulnerability Class:** Improper Link Resolution Before File Access / Arbitrary File Read (CWE-59)\n**Quote:** `if _, err := crmetadata.ReadJSONFile(dumpSpec, mountPoint, crmetadata.SpecDumpFile); err != nil {`\n**Description:** When restoring from an OCI image, the image is mounted at `mountPoint`. The code reads `spec.dump` directly from this mount. The safety check `assertCheckpointDirSafe` (which rejects symlinks) is not called until line 551, meaning it happens *after* these files are read. If a malicious OCI image contains a symlink named `spec.dump` pointing to a sensitive host file or a blocking device, `ReadJSONFile` will follow it. This can lead to arbitrary file reads (if the target is valid JSON) or a Denial of Service.\n\n### 4. Improper Link Resolution Before File Access (Symlink Following)\n**File:** `container_checkpoint_linux.go`\n**Line:** 374\n**Vulnerability Class:** Improper Link Resolution Before File Access / Arbitrary File Read (CWE-59)\n**Quote:** `if _, err := crmetadata.ReadJSONFile(config, mountPoint, crmetadata.ConfigDumpFile); err != nil {`\n**Description:** Similar to the finding above, the code reads `config.dump` from the unverified mount point, making it vulnerable to symlink attacks.\n\n### 5. Improper Link Resolution Before File Access (Symlink Following)\n**File:** `container_checkpoint_linux.go`\n**Line:** 380\n**Vulnerability Class:** Improper Link Resolution Before File Access / Arbitrary File Read (CWE-59)\n**Quote:** `if _, err := crmetadata.ReadJSONFile(containerStatus, mountPoint, crmetadata.StatusDumpFile); err != nil {`\n**Description:** Similar to the findings above, the code reads `status.dump` from the unverified mount point, making it vulnerable to symlink attacks.\n\n### 6. Unhandled Error\n**File:** `container_checkpoint_linux.go`\n**Line:** 579\n**Vulnerability Class:** Unchecked Return Value (CWE-252)\n**Quote:** `archiveFile.Seek(0, 0)`\n**Description:** The return values (including the error) of `archiveFile.Seek(0, 0)` are ignored. If `archiveFile` is a non-seekable file type (such as a pipe or socket), `Seek` will fail silently. The subsequent `archive.Apply` will then attempt to read from the already-consumed stream (EOF), resulting in an empty restore directory without raising an error, which can lead to the container starting in an unintended or insecure state.",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The reference vulnerability is a missing authorization check on the restore gate in CRImportCheckpoint, which lets the checkpoint's destination security context be applied unchecked. The review reports two different bugs: symlink-following reads of metadata files from the mounted image, and a mount leak on early error returns. Neither finding mentions a missing restore gate or authorization check, or the unchecked application of checkpoint security context.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The reference vulnerability is a missing authorization check on the restore gate in CRImportCheckpoint, which lets the checkpoint's destination security context be applied unchecked. The review reports two different bugs: symlink-following reads of metadata files from the mounted image, and a mount leak on early error returns. Neither finding mentions a missing restore gate or authorization check, or the unchecked application of checkpoint security context.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.143,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 165,
+          "prompt_tokens": 8980,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 9145
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 110.329,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 12022,
+        "completion_tokens_details": {
+          "reasoning_tokens": 11107
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 5538,
+        "total_tokens": 17560
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities.\n\n### 1. Arbitrary File Read / Denial of Service (Symlink Following / Use-Before-Check)\n**File:** `container_checkpoint_linux.go`\n**Lines:** 365, 371, 377\n**Vulnerability Class:** Arbitrary File Read / Denial of Service (CWE-59, CWE-362)\n\n**Description:**\nWhen restoring a checkpoint from an OCI image, the image snapshot is mounted to the host filesystem at `mountPoint` (line 308). OCI images can contain arbitrary files, including absolute symlinks. The code proceeds to read metadata files (`spec.dump`, `config.dump`, `status.dump`) directly from this mount point using `crmetadata.ReadJSONFile`. \n\nBecause these reads occur *before* any symlink validation is performed (validation is only attempted later at line 548 via `assertCheckpointDirSafe`), a malicious OCI image can include a symlink for one of these files pointing to a sensitive host file or a device file. If a symlink points to `/dev/zero`, `ReadJSONFile` will follow it and attempt to read the infinite stream into memory, resulting in an Out-Of-Memory (OOM) Denial of Service. While JSON parsing errors might limit the exfiltration of sensitive host files (like `/etc/shadow`), the DoS impact is severe.\n\n**Quotes:**\n```go\n   365  \tif _, err := crmetadata.ReadJSONFile(dumpSpec, mountPoint, crmetadata.SpecDumpFile); err != nil {\n```\n```go\n   371  \tif _, err := crmetadata.ReadJSONFile(config, mountPoint, crmetadata.ConfigDumpFile); err != nil {\n```\n```go\n   377  \tif _, err := crmetadata.ReadJSONFile(containerStatus, mountPoint, crmetadata.StatusDumpFile); err != nil {\n```\n\n---\n\n### 2. Resource Leak / Denial of Service (Mount Leak)\n**File:** `container_checkpoint_linux.go`\n**Lines:** 270-274, 308, 544\n**Vulnerability Class:** Resource Leak / Denial of Service (CWE-772, CWE-400)\n\n**Description:**\nIn the OCI image restoration path, the snapshot is mounted at `mountPoint` using `mount.All` at line 308. The corresponding unmount operation, `mount.UnmountAll(mountPoint, 0)`, is only called at line 544, near the end of the successful execution path. \n\nIf any error occurs between the mount (line 308) and the unmount (line 544)—such as failing to read the metadata files, failing to pull the base image, or failing to create the container—the function returns early. The `defer` block at line 270 attempts to clean up the temporary directory by calling `os.RemoveAll(mountPoint)`. However, because `mountPoint` is still an active mount point, `os.RemoveAll` will fail with a \"device or resource busy\" error. Consequently, the mount is never unmounted and the temporary directory is never removed. An attacker can exploit this by providing a checkpoint image designed to trigger an error during restoration, repeatedly leaking mounts and eventually causing a Denial of Service due to resource exhaustion on the node.\n\n**Quotes:**\n```go\n   270  \tdefer func() {\n   271  \t\tif err := os.RemoveAll(mountPoint); err != nil {\n   272  \t\t\tlog.G(ctx).Errorf(\"Could not recursively remove %s: %q\", mountPoint, err)\n   273  \t\t}\n   274  \t}()\n```\n```go\n   308  \t\tif err := mount.All(mounts, mountPoint); err != nil {\n```\n```go\n   544  \t\tif err := mount.UnmountAll(mountPoint, 0); err != nil {\n```",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

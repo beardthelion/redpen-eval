@@ -1,0 +1,123 @@
+{
+  "case_id": "GHSA-pw5q-rjx4-7f7p",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the missing privilege-ordering check that let a delegated users:update/users:delete holder modify or delete a global admin. The patched code now has that check, and the review does not claim it is missing. Findings 1 and 2 say a non-admin can edit or delete ordinary users, which is a different concern. They do not say a global admin can be modified or deleted. Finding 2 even acknowledges the admin-target check at lines 350-352. Findings 3 and 4 are speculative fail-open concerns about a nil callerPerms or caller, for example from missing middleware. They do not claim the admin-target check is absent in the normal flow, so they are a different issue from the reference vulnerability. No finding reports the original vulnerability as still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the missing privilege-ordering check that let a delegated users:update/users:delete holder modify or delete a global admin. The patched code now has that check, and the review does not claim it is missing. Findings 1 and 2 say a non-admin can edit or delete ordinary users, which is a different concern. They do not say a global admin can be modified or deleted. Finding 2 even acknowledges the admin-target check at lines 350-352. Findings 3 and 4 are speculative fail-open concerns about a nil callerPerms or caller, for example from missing middleware. They do not claim the admin-target check is absent in the normal flow, so they are a different issue from the reference vulnerability. No finding reports the original vulnerability as still present.\"}",
+      "repaired": true,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.821,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 275,
+          "prompt_tokens": 5975,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 6250
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 66.594,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6881,
+        "completion_tokens_details": {
+          "reasoning_tokens": 6084
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2159,
+        "total_tokens": 9040
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is a review of the code for security vulnerabilities:\n\n### 1. Broken Access Control / Insecure Direct Object Reference (IDOR)\n- **File:** users.go\n- **Line:** 295\n- **Vulnerability Class:** Broken Access Control / IDOR\n- **Quote:** `if input.Body.Password != nil && *input.Body.Password != \"\" && caller != nil && caller.ID != userModel.ID {`\n- **Description:** The authorization logic explicitly prevents a non-admin user from changing *another* user's password. However, it fails to restrict modifications to other sensitive fields. A non-admin user can pass another user's ID and update their `Email`, `Username`, or `DisplayName` because there is no check enforcing `caller.ID == userModel.ID` for these fields. An attacker could exploit this to change another user's email address and subsequently take over their account via a password reset.\n\n### 2. Broken Access Control / Insecure Direct Object Reference (IDOR)\n- **File:** users.go\n- **Line:** 345\n- **Vulnerability Class:** Broken Access Control / IDOR\n- **Quote:** `if callerPerms != nil && !callerPerms.IsGlobalAdmin() && caller != nil && caller.ID != input.UserID {`\n- **Description:** In the `DeleteUser` function, the code checks if a non-admin caller is attempting to delete a different user (`caller.ID != input.UserID`). However, it only uses this condition to verify if the *target* is a global admin (lines 350-352). If the target is just a regular user, the block finishes without error and proceeds to delete the user. This allows any non-admin user to delete any other non-admin user's account.\n\n### 3. Improper Authorization / Fail-Open Logic\n- **File:** users.go\n- **Line:** 294\n- **Vulnerability Class:** Improper Authorization (Fail-Open)\n- **Quote:** `if callerPerms != nil && !callerPerms.IsGlobalAdmin() {`\n- **Description:** The authorization checks are written in a \"fail-open\" manner. If `callerPerms` evaluates to `nil` (e.g., due to a missing authentication middleware, a misconfigured context, or an unauthenticated request), the entire authorization block is skipped. This would allow an unauthenticated user to bypass the global admin protection and modify any user. Furthermore, on line 295, if `caller` is `nil`, the password modification check is also bypassed. \n\n### 4. Improper Authorization / Fail-Open Logic\n- **File:** users.go\n- **Line:** 345\n- **Vulnerability Class:** Improper Authorization (Fail-Open)\n- **Quote:** `if callerPerms != nil && !callerPerms.IsGlobalAdmin() && caller != nil && caller.ID != input.UserID {`\n- **Description:** Similar to the `UpdateUser` function, the `DeleteUser` pre-check relies on `callerPerms` and `caller` not being `nil`. If either is `nil`, the condition evaluates to false, bypassing the target-admin check entirely. This fail-open design could allow unauthenticated requests to delete any user, including global admins, if the underlying service relies on this handler's pre-checks.\n\n*(Note: On line 287, `new(time.Now())` is invalid Go syntax as `new()` expects a type, not a function call/value. While this is a compilation error rather than a security vulnerability, it will need to be fixed for the code to run).*",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 252,
+            "start": 252
+          },
+          {
+            "end": 319,
+            "start": 319
+          }
+        ],
+        "rationale": "Findings 1 and 3 say UpdateUser and DeleteUser never check whether the caller may act on the target account named by input.UserID. That is the missing auth-check guard on target-versus-caller authorization, which is the ground-truth weakness. The review frames it as generic IDOR and never mentions privilege ordering, admin targets, or password-reset takeover. It still names the same missing check on the same operations, so I count it as a match. Finding 2 is about current-password validation and is a different issue.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":252,\"end\":252},{\"start\":319,\"end\":319}],\"rationale\":\"Findings 1 and 3 say UpdateUser and DeleteUser never check whether the caller may act on the target account named by input.UserID. That is the missing auth-check guard on target-versus-caller authorization, which is the ground-truth weakness. The review frames it as generic IDOR and never mentions privilege ordering, admin targets, or password-reset takeover. It still names the same missing check on the same operations, so I count it as a match. Finding 2 is about current-password validation and is a different issue.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 5.379,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 558,
+          "prompt_tokens": 3284,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3842
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 48.59,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6021,
+        "completion_tokens_details": {
+          "reasoning_tokens": 5615
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1394,
+        "total_tokens": 7415
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is a review of the code for security vulnerabilities:\n\n### Finding 1\n- **File:** users.go\n- **Line:** 252\n- **Vulnerability class:** Insecure Direct Object Reference (IDOR) / Missing Authorization\n- **Quote:** `userModel, err := h.userService.GetUserByID(ctx, input.UserID)`\n- **Description:** The `UpdateUser` handler does not verify if the currently authenticated user has the authorization to modify the account associated with `input.UserID`. Unless authorization is strictly enforced in a preceding middleware or within the service layer (which is an anti-pattern for context-aware HTTP authorization), an authenticated attacker could manipulate the `UserID` parameter to update the profile of any other user.\n\n### Finding 2\n- **File:** users.go\n- **Line:** 279\n- **Vulnerability class:** Broken Access Control / Missing Current Password Validation\n- **Quote:** `if input.Body.Password != nil && *input.Body.Password != \"\" {`\n- **Description:** The endpoint allows a user to update their password without requiring them to provide their current password. If an attacker temporarily gains access to an authenticated user's active session (e.g., via an unattended device or XSS), they can change the password and permanently lock the legitimate user out of their account. \n\n### Finding 3\n- **File:** users.go\n- **Line:** 319\n- **Vulnerability class:** Insecure Direct Object Reference (IDOR) / Missing Authorization\n- **Quote:** `if err := h.userService.DeleteUser(ctx, input.UserID); err != nil {`\n- **Description:** Similar to Finding 1, the `DeleteUser` handler lacks an explicit authorization check to ensure the requester has permission to delete the specified `input.UserID`. This could allow an attacker to delete arbitrary user accounts by supplying different user IDs.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

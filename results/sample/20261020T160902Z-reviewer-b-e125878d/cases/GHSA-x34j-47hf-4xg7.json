@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-x34j-47hf-4xg7",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports no vulnerabilities and explicitly states that the expected origin is derived safely from window.location.origin rather than from a URL-controllable value. It does not claim the fixed trust-anchor issue is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review reports no vulnerabilities and explicitly states that the expected origin is derived safely from window.location.origin rather than from a URL-controllable value. It does not claim the fixed trust-anchor issue is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.289,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 103,
+          "prompt_tokens": 2128,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2231
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 16.071,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 1449,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1284
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 689,
+        "total_tokens": 2138
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided code and found no security vulnerabilities. \n\nThe code correctly implements secure practices for cross-window communication (`postMessage`):\n- **Origin Validation:** It strictly compares `event.origin` against an `expectedOrigin` (which is safely derived from `window.location.origin` rather than user-controllable URL parameters).\n- **Source Validation:** When the `peerWindow` reference is available, it verifies that `event.source` matches the expected iframe window, providing defense-in-depth against other windows on the same origin.\n- **Target Origin:** It explicitly passes `expectedOrigin` as the `targetOrigin` in `postMessage`, avoiding the insecure `\"*\"` wildcard and ensuring messages are not leaked if the iframe is navigated to an untrusted domain.",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The known vulnerability is that getExpectedPreviewOrigin derives the trust anchor from the URL-supplied value, with an absolute URL taking its own origin, instead of from the admin's own origin. The review never makes this point. Finding 1 and Finding 2 both concern the literal \"null\" origin from data: or sandboxed URLs and the missing rejection of \"null\". They treat the URL-derived origin only as a source of a \"null\" value and do not say that an attacker-controlled URL can set the trusted origin. That is a different weakness from the reference one.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The known vulnerability is that getExpectedPreviewOrigin derives the trust anchor from the URL-supplied value, with an absolute URL taking its own origin, instead of from the admin's own origin. The review never makes this point. Finding 1 and Finding 2 both concern the literal \\\"null\\\" origin from data: or sandboxed URLs and the missing rejection of \\\"null\\\". They treat the URL-derived origin only as a source of a \\\"null\\\" value and do not say that an attacker-controlled URL can set the trusted origin. That is a different weakness from the reference one.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.271,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 216,
+          "prompt_tokens": 2512,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2728
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 86.762,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 8435,
+        "completion_tokens_details": {
+          "reasoning_tokens": 8027
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 716,
+        "total_tokens": 9151
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### Finding 1\n- **File:** preview-origin.ts\n- **Line:** 60\n- **Vulnerability Class:** Insecure `postMessage` Target Origin\n- **Quote:** `peerWindow.postMessage(message, expectedOrigin);`\n- **Description:** The `getExpectedPreviewOrigin` function uses `new URL(...).origin` (Line 22), which returns the literal string `\"null\"` for certain URL schemes (e.g., `data:`, `javascript:`, or `about:blank`). If `expectedOrigin` evaluates to `\"null\"`, the `postMessageToPreview` function will send a message with a target origin of `\"null\"`. Using `\"null\"` as a target origin is insecure because it allows any document with a `\"null\"` origin (such as a sandboxed iframe or an attacker-controlled `data:` URI) to intercept the message if the `peerWindow` is navigated away from its intended location. The function should explicitly reject `\"null\"` as an `expectedOrigin`.\n\n### Finding 2\n- **File:** preview-origin.ts\n- **Line:** 44\n- **Vulnerability Class:** Origin Validation Bypass\n- **Quote:** `if (event.origin !== expectedOrigin) return false;`\n- **Description:** Similar to Finding 1, if the `expectedOrigin` is the string `\"null\"`, this check will successfully pass for any incoming `MessageEvent` originating from a `\"null\"` origin. If the optional `peerWindow` parameter is not provided by the caller, the function will skip the `event.source` check (Line 45) and incorrectly trust the message. This allows an attacker using a sandboxed iframe or a `data:` URI (which inherently have a `\"null\"` origin) to spoof messages to the admin channel. The function should explicitly check for and reject `\"null\"` origins.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

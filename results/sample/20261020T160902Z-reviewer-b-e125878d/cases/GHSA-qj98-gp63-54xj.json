@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-qj98-gp63-54xj",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the absence of authentication on Zero's admin endpoints such as removeNode. The patched code wraps those endpoints (lines 324-327) in adminAuthHandler, and the review acknowledges that they are protected. The review's findings concern DefaultServeMux usage, the unauthenticated /debug/jemalloc endpoint, and the /debug/z endpoint. These are different issues, not the unauthenticated admin endpoints like removeNode, so none of them claim the original vulnerability is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the absence of authentication on Zero's admin endpoints such as removeNode. The patched code wraps those endpoints (lines 324-327) in adminAuthHandler, and the review acknowledges that they are protected. The review's findings concern DefaultServeMux usage, the unauthenticated /debug/jemalloc endpoint, and the /debug/z endpoint. These are different issues, not the unauthenticated admin endpoints like removeNode, so none of them claim the original vulnerability is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.832,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 205,
+          "prompt_tokens": 7537,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7742
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 73.886,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 7673,
+        "completion_tokens_details": {
+          "reasoning_tokens": 7012
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 4399,
+        "total_tokens": 12072
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Exposure of Sensitive Information / Improper Access Control (CWE-200 / CWE-425)\n- **File:** run.go\n- **Line:** 311\n- **Vulnerability Class:** Exposure of Sensitive Information / Improper Access Control\n- **Quote:** `go x.StartListenHttpAndHttps(httpListener, tlsCfg, st.zero.closer, nil)`\n- **Description:** Passing `nil` as the handler argument to the HTTP server causes it to fall back to using the global `http.DefaultServeMux`. This is a well-known security risk in Go because any imported package in the dependency tree (such as `net/http/pprof`) can automatically register its own handlers on `DefaultServeMux`. This can inadvertently expose sensitive debug information, profiling endpoints, and internal metrics to unauthorized users over the network.\n\n### 2. Exposure of Sensitive Information / Improper Access Control (CWE-200 / CWE-425)\n- **File:** run.go\n- **Line:** 314\n- **Vulnerability Class:** Exposure of Sensitive Information / Improper Access Control\n- **Quote:** `http.Handle(\"/\", audit.AuditRequestHttp(baseMux))`\n- **Description:** By registering the root handler on the global `http.DefaultServeMux` instead of a dedicated, isolated `http.ServeMux`, the application contributes to the exposure of globally registered endpoints. An isolated multiplexer should be created and passed directly to the HTTP server to prevent unintended route exposure.\n\n### 3. Exposure of Sensitive Information (CWE-200)\n- **File:** run.go\n- **Line:** 329\n- **Vulnerability Class:** Exposure of Sensitive Information\n- **Quote:** `baseMux.HandleFunc(\"/debug/jemalloc\", x.JemallocHandler)`\n- **Description:** The `/debug/jemalloc` endpoint is registered on `baseMux` without any authentication wrapper (unlike the administrative endpoints on lines 324-327 which are protected by `adminAuthHandler`). Because `baseMux` is mounted at the root `/`, this exposes memory profiling data to any unauthenticated user who can reach the HTTP port. Profiling endpoints can leak sensitive memory information and can also be abused to cause Denial of Service (DoS) due to the overhead of profiling.\n\n### 4. Exposure of Sensitive Information / Improper Access Control (CWE-200 / CWE-425)\n- **File:** run.go\n- **Line:** 330\n- **Vulnerability Class:** Exposure of Sensitive Information / Improper Access Control\n- **Quote:** `http.DefaultServeMux.Handle(\"/debug/z\", zpages.NewTracezHandler(zpages.NewSpanProcessor()))`\n- **Description:** Explicitly using `http.DefaultServeMux` for routing exposes the application to the risks associated with the global multiplexer. This endpoint is also exposed without authentication, leaking internal tracing and span data to unauthenticated callers.",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "None of the findings identify that the admin endpoints (/removeNode, /moveTablet, /assign, /state) at lines 298-301 are registered without authentication. Finding 1 is about use of DefaultServeMux and the risk of other packages registering handlers. Finding 2 is about audit logging bypass on /debug/z. Finding 3 is about audit init failing open. These are different weaknesses and none describes the missing authentication on the destructive control-plane endpoints.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"None of the findings identify that the admin endpoints (/removeNode, /moveTablet, /assign, /state) at lines 298-301 are registered without authentication. Finding 1 is about use of DefaultServeMux and the risk of other packages registering handlers. Finding 2 is about audit logging bypass on /debug/z. Finding 3 is about audit init failing open. These are different weaknesses and none describes the missing authentication on the destructive control-plane endpoints.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.876,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 184,
+          "prompt_tokens": 6896,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7080
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 95.519,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 10139,
+        "completion_tokens_details": {
+          "reasoning_tokens": 9360
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 3825,
+        "total_tokens": 13964
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Unintended Exposure of Sensitive Endpoints via `http.DefaultServeMux`\n- **File:** run.go\n- **Lines:** 290, 293, 304\n- **Vulnerability Class:** CWE-200 (Exposure of Sensitive Information to an Unauthorized Actor) / CWE-425 (Direct Request / Forced Browsing)\n- **Description:** The application starts its HTTP server using `nil` as the handler (which defaults to `http.DefaultServeMux`) and registers routes using `http.Handle` and `http.DefaultServeMux.Handle`. Using the globally shared `DefaultServeMux` is dangerous because any imported package (such as `net/http/pprof`) that registers its own handlers in its `init()` function will automatically have its endpoints exposed on this server. This can inadvertently expose sensitive debugging, profiling, and internal state information to unauthorized actors. It is highly recommended to instantiate and use a private `http.ServeMux`.\n- **Quotes:**\n  ```go\n     290  \tgo x.StartListenHttpAndHttps(httpListener, tlsCfg, st.zero.closer, nil)\n  ```\n  ```go\n     293  \thttp.Handle(\"/\", audit.AuditRequestHttp(baseMux))\n  ```\n  ```go\n     304  \thttp.DefaultServeMux.Handle(\"/debug/z\", zpages.NewTracezHandler(zpages.NewSpanProcessor()))\n  ```\n\n### 2. Audit Logging Bypass for Debug Endpoints\n- **File:** run.go\n- **Line:** 304\n- **Vulnerability Class:** CWE-778 (Insufficient Logging) / CWE-284 (Improper Access Control)\n- **Description:** The `/debug/z` endpoint is registered directly to `http.DefaultServeMux` rather than the `baseMux`. Because the audit logging middleware (`audit.AuditRequestHttp`) is only applied to wrap `baseMux` (on line 293), any requests made to `/debug/z` (as well as any other endpoints implicitly registered to `DefaultServeMux`, like `pprof`) will completely bypass the audit logging mechanism.\n- **Quote:**\n  ```go\n     304  \thttp.DefaultServeMux.Handle(\"/debug/z\", zpages.NewTracezHandler(zpages.NewSpanProcessor()))\n  ```\n\n### 3. Failing Open on Audit Initialization Error\n- **File:** run.go\n- **Lines:** 268-270\n- **Vulnerability Class:** CWE-778 (Insufficient Logging) / CWE-390 (Detection of Error Condition Without Action)\n- **Description:** If the auditor fails to initialize (i.e., `audit.InitAuditor` returns an error), the application merely logs the error and continues its startup sequence. This \"fail open\" behavior means the server will process requests without generating audit logs, violating the security and compliance expectations of an administrator who explicitly configured auditing. If a required security control like auditing fails to initialize, the application should terminate (e.g., using `log.Fatalf` or `x.Check`).\n- **Quote:**\n  ```go\n     268  \t\tif err := audit.InitAuditor(opts.audit, 0, nodeId); err != nil {\n     269  \t\t\tglog.Errorf(\"error while initializing audit logs %+v\", err)\n     270  \t\t}\n  ```",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-vrcc-3ch7-hppw",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is a missing nil check on schemaRef.Value.Items in parseArray, and the code now has that check at line 591. Finding 3 does cite line 591, but it claims schemaRef and schemaRef.Value lack nil checks, not that Items is unchecked. That is a different issue (an unresolved schema), not the fixed Items-nil panic. The review never says an array schema with no items still panics, so it does not report the patched vulnerability. The other findings concern different issues.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is a missing nil check on schemaRef.Value.Items in parseArray, and the code now has that check at line 591. Finding 3 does cite line 591, but it claims schemaRef and schemaRef.Value lack nil checks, not that Items is unchecked. That is a different issue (an unresolved schema), not the fixed Items-nil panic. The review never says an array schema with no items still panics, so it does not report the patched vulnerability. The other findings concern different issues.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.892,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 193,
+          "prompt_tokens": 4150,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4343
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 232.891,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 17626,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 17148,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1104640000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3218,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3218
+        },
+        "total_tokens": 20844
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has four security vulnerabilities.\n\n1. File: `req_resp_decoder.go`, line 1095. Vulnerability class: CWE-20 Improper Input Validation (schema-constraint bypass). The line reads `resultMap[k] = r`. The `additionalProperties` schema loop re-decodes every key, including keys already decoded under their property schemas, and overwrites `resultMap`. The `additionalProperties: true` branch at lines 1102–1105 correctly guards with `if _, exists := resultMap[k]; !exists`. A successful re-parse can replace a constrained value with one typed only under the weaker additional-properties schema.\n\n2. File: `req_resp_decoder.go`, line 608. Vulnerability class: CWE-20 Improper Input Validation (fail-open). The line reads `return nil, nil`. If any element parses as nil, the whole array is discarded and the function returns success. Callers cannot distinguish an omitted array from an attacker-nulled one, so a single nil item can drop the rest of the array and skip array constraints. The same fail-open pattern appears at line 615, where `return nil, nil` collapses a one-element empty string to absent.\n\n3. File: `req_resp_decoder.go`, line 591. Vulnerability class: CWE-476 NULL Pointer Dereference. The line reads `if schemaRef.Value.Items == nil || schemaRef.Value.Items.Value == nil {`. `schemaRef` and `schemaRef.Value` are dereferenced with no nil check, so an unresolved schema panics in the decoder instead of returning an error. The same class occurs at line 1041, where `case schema.Value.Type.Is(\"array\"):` dereferences `schema.Value` before any nil check.\n\n4. File: `req_resp_decoder.go`, line 1090. Vulnerability class: CWE-674 Uncontrolled Recursion. The line reads `r, err := buildResObj(params, mapKeys, k, additPropsSchema)`. Recursion follows the schema and user-controlled keys with no depth limit. The same pattern appears at lines 1060 and 1079. A cyclic or deeply nested schema lets nested parameter keys exhaust the stack.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 594,
+            "start": 594
+          },
+          {
+            "end": 1038,
+            "start": 1038
+          }
+        ],
+        "rationale": "Finding 3 (CWE-476) names the missing nil check on `schemaRef.Value.Items` in parseArray at line 594. It says an array schema with a missing `Items` panics on a request, causing denial of service. That is the same missing guard and weakness as the ground truth. The finding also cites line 1038, which is a related dereference, but it still describes this vulnerability.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":594,\"end\":594},{\"start\":1038,\"end\":1038}],\"rationale\":\"Finding 3 (CWE-476) names the missing nil check on `schemaRef.Value.Items` in parseArray at line 594. It says an array schema with a missing `Items` panics on a request, causing denial of service. That is the same missing guard and weakness as the ground truth. The finding also cites line 1038, which is a related dereference, but it still describes this vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.667,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 176,
+          "prompt_tokens": 4519,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4695
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 84.537,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6916,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 6034,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 459600000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3096,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3096
+        },
+        "total_tokens": 10012
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has six security findings, all in `req_resp_decoder.go`.\n\n1. **CWE-770 (Allocation of Resources Without Limits or Throttling)** at line 1052. The slice length comes from `sliceMapToSlice` on the request map at line 1048, with no cap before allocation. User-controlled array indexes can force a huge `make` and exhaust memory.\n```1052:1052:req_resp_decoder.go\n\t\tresultArr := make([]any /*not 0,*/, len(arr))\n```\n\n2. **CWE-674 (Uncontrolled Recursion)** at lines 1054 and 1084. `buildResObj` recurses on array indexes and on every additionalProperties key with no depth limit. Nested query objects, especially with a recursive additionalProperties schema, can exhaust the stack.\n```1054:1054:req_resp_decoder.go\n\t\t\tr, err := buildResObj(params, mapKeys, strconv.Itoa(i), schema.Value.Items)\n```\n```1084:1084:req_resp_decoder.go\n\t\t\t\tr, err := buildResObj(params, mapKeys, k, additPropsSchema)\n```\n\n3. **CWE-476 (NULL Pointer Dereference)** at lines 594 and 1038. `schemaRef.Value` and `schema.Value` (and `.Items`) are dereferenced with no nil check. A schema with a missing `Value` or `Items` panics when that parameter is present, which is a request-triggered denial of service.\n```594:594:req_resp_decoder.go\n\t\titem, err := d.parseValue(v, schemaRef.Value.Items)\n```\n```1038:1038:req_resp_decoder.go\n\tcase schema.Value.Type.Is(\"array\"):\n```\n\n4. **CWE-636 (Not Failing Securely) / CWE-20** at lines 604–605 and 610–612. One nil item, or a single empty string, drops the whole array and returns success (`nil, nil`). That fail-open collapse can turn a provided parameter into “absent” and skip later required/allow-list checks.\n```604:605:req_resp_decoder.go\n\t\tif item == nil {\n\t\t\treturn nil, nil\n```\n```610:612:req_resp_decoder.go\n\tif len(value) == 1 {\n\t\tif str, ok := value[0].(string); ok && str == \"\" {\n\t\t\treturn nil, nil\n```\n\n5. **CWE-843 (Type Confusion) / CWE-20** at lines 1068–1070 and 1096–1098. A non-map object value is returned with a nil error, and `additionalProperties: true` copies raw query values into the result without `parsePrimitive`. Callers that trust this layer receive unchecked types and keys.\n```1068:1070:req_resp_decoder.go\n\t\tif !ok {\n\t\t\t// not the expected type, but return it either way and leave validation up to ValidateParameter\n\t\t\treturn pp, nil\n```\n```1096:1098:req_resp_decoder.go\n\t\t\tfor k, v := range objectParams {\n\t\t\t\tif _, exists := resultMap[k]; !exists {\n\t\t\t\t\tresultMap[k] = v\n```\n\n6. **CWE-209 (Information Exposure Through an Error Message)** at line 1050. The internal error is interpolated into `Reason`, so parser internals can be returned to the client.\n```1050:1050:req_resp_decoder.go\n\t\t\treturn nil, &ParseError{path: pathFromKeys(mapKeys), Kind: KindInvalidFormat, Reason: fmt.Sprintf(\"could not convert value map to array: %v\", err)}\n```\n\nDefensive fixes: cap array length and recursion depth before allocating or recursing; nil-check schema refs and fail closed; reject nil or empty items instead of returning a nil array; run additional properties through the same primitive parsing as declared fields; and keep internal errors out of client-facing reasons.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

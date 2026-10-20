@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-685w-q87j-wqw3",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports only an unbounded io.ReadAll DoS at line 592. It does not claim that the manifest digest is left unverified, so it does not report the patched vulnerability. The digest verification is present at lines 602-616.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review reports only an unbounded io.ReadAll DoS at line 592. It does not claim that the manifest digest is left unverified, so it does not report the patched vulnerability. The digest verification is present at lines 602-616.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.582,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 105,
+          "prompt_tokens": 3177,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3282
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 34.823,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4072,
+        "completion_tokens_details": {
+          "reasoning_tokens": 3788
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1589,
+        "total_tokens": 5661
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1\n- **File:** repository.go\n- **Line:** 592\n- **Vulnerability class:** Denial of Service (DoS) / Unrestricted Resource Consumption (CWE-400)\n- **Quote:** `body, err := io.ReadAll(resp.Body)`\n\n**Description:**\nThe code reads the entire HTTP response body into memory using `io.ReadAll` without imposing any size limits. A malicious, compromised, or misconfigured container registry could return an excessively large response body. Because `io.ReadAll` will continue to allocate memory until the response finishes or the system runs out of memory, this can easily lead to memory exhaustion and crash the application (Out of Memory / OOM panic), resulting in a Denial of Service. \n\n**Recommendation:** \nUse `io.LimitReader` to enforce a reasonable maximum size for the manifest body before reading it into memory. Manifests are typically small JSON documents, so a limit (e.g., a few megabytes) can safely be applied without affecting legitimate operations. \n\n```go\nconst maxManifestSize = 4 * 1024 * 1024 // 4MB limit\nbody, err := io.ReadAll(io.LimitReader(resp.Body, maxManifestSize))\n```",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review's only finding is unbounded memory consumption from io.ReadAll at line 588, which is a DoS issue. It does not mention the missing check that the manifest bytes hash to the requested digest, nor the forged Docker-Content-Digest header. It therefore does not describe the known vulnerability.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review's only finding is unbounded memory consumption from io.ReadAll at line 588, which is a DoS issue. It does not mention the missing check that the manifest bytes hash to the requested digest, nor the forged Docker-Content-Digest header. It therefore does not describe the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.713,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 128,
+          "prompt_tokens": 2606,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2734
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 22.396,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 2033,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1805
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1186,
+        "total_tokens": 3219
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1\n- **File:** repository.go\n- **Line:** 588\n- **Vulnerability Class:** Uncontrolled Resource Consumption / Denial of Service (DoS)\n- **Quote:** `body, err := io.ReadAll(resp.Body)`\n\n**Description:** \nThe code reads the entire HTTP response body into memory using `io.ReadAll` without enforcing any size limits. If the client connects to a malicious or compromised registry, the server could return an infinitely large or excessively large response body. This will cause the application to allocate memory continuously until it exhausts all available system memory, leading to an Out-Of-Memory (OOM) crash and resulting in a Denial of Service. \n\n**Recommendation:** \nWrap the response body with an `io.LimitReader` to enforce a reasonable maximum size for the manifest (e.g., a few megabytes) before reading it into memory. \nExample: `body, err := io.ReadAll(io.LimitReader(resp.Body, maxManifestSize))`",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

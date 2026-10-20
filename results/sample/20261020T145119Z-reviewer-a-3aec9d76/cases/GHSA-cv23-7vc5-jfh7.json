@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-cv23-7vc5-jfh7",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says no vulnerabilities were found. It treats the length guard at lines 792-794 as correctly fixing the slice-bounds panic, so it does not claim the patched issue is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says no vulnerabilities were found. It treats the length guard at lines 792-794 as correctly fixing the slice-bounds panic, so it does not claim the patched issue is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.074,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 94,
+          "prompt_tokens": 1682,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 1776
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 280.458,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 20650,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 20536,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1255300000,
+        "num_sources_used": 0,
+        "prompt_tokens": 1679,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 1679
+        },
+        "total_tokens": 22329
+      }
+    },
+    "review_error": null,
+    "review_text": "No vulnerabilities found in `parser.go`.\n\nThe length check before `url[:nPath]` (lines 792–794) closes the slice-bounds panic described in the comment (GHSA-cv23-7vc5-jfh7), and `url[nPath]` is only read when `nLink > nPath`. The URI loop is similarly guarded by `nLink > nPrefix` before `url[:nPrefix]` and `url[nPrefix]`. Unmatched input falls through to `return false`, so the check fails closed.",
+    "status": "scored"
+  },
+  "guard_class": "type-range-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 789,
+            "start": 789
+          },
+          {
+            "end": 790,
+            "start": 790
+          }
+        ],
+        "rationale": "Finding 1 identifies that url[:nPath] at line 789, where nPath comes from len(path), is sliced before the nLink >= nPath guard on line 790. This panics when url is shorter than the bound. That is the same missing-guard slice-bounds panic as the reference vulnerability.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":789,\"end\":789},{\"start\":790,\"end\":790}],\"rationale\":\"Finding 1 identifies that url[:nPath] at line 789, where nPath comes from len(path), is sliced before the nLink >= nPath guard on line 790. This panics when url is shorter than the bound. That is the same missing-guard slice-bounds panic as the reference vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.341,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 148,
+          "prompt_tokens": 2156,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2304
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 250.568,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14574,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 14125,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 889280000,
+        "num_sources_used": 0,
+        "prompt_tokens": 1606,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 1606
+        },
+        "total_tokens": 16180
+      }
+    },
+    "review_error": null,
+    "review_text": "The function panics on short input, and its allowlist boundary check is fail-open.\n\n**1. Denial of service (unchecked slice / uncaught panic), CWE-129 / CWE-248**  \nFile: `parser.go`, line 789  \nQuote: `linkPrefix := url[:nPath]`  \n`url[:nPath]` runs before the `nLink >= nPath` test on line 790. If any `Paths` entry is longer than `url` (including a short or empty URL), Go panics with a slice bounds error. In a request handler that is a crash/DoS. The URI loop below checks length first; this loop does not.\n\n**2. Allowlist bypass (permissive prefix match), CWE-20 / CWE-183**  \nFile: `parser.go`, line 793  \nQuote: `} else if IsAlnum(url[nPath]) {`  \nA matching prefix is treated as safe when the next byte is alphanumeric. That is not a URL token boundary, so a listed prefix also accepts a different host or path that merely continues with `[A-Za-z0-9]` (for example an entry `https://good.com` also matches `https://good.comattacker.com`, and `/admin` also matches `/adminpanel`). The same pattern is on line 805: `if bytes.Equal(linkPrefix, prefix) && IsAlnum(url[nPrefix]) {`. An empty `Paths` or `URIs` entry makes this worse: the empty prefix compares equal, and any URL whose first byte is alphanumeric (including `javascript:`) is accepted.\n\n**3. Incomplete Unicode/case handling (parser differential), CWE-176**  \nFile: `parser.go`, line 804  \nQuote: `linkPrefix := bytes.ToLower(url[:nPrefix])`  \nCase-folding is ASCII-only (`bytes.ToLower`), and the comment on line 800 notes Unicode is unhandled. A later parser that normalizes Unicode, strips control characters, or treats `\\` as `/` can interpret a URL this function already marked safe as a different scheme or host.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "case_id": "GHSA-pwhx-cvv3-qj5c",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says it found no vulnerabilities and credits the JSON.stringify use in the generated client code. It does not claim the raw-interpolation issue is still present, so it did not report the patched vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says it found no vulnerabilities and credits the JSON.stringify use in the generated client code. It does not claim the raw-interpolation issue is still present, so it did not report the patched vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.197,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 98,
+          "prompt_tokens": 7349,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7447
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 69.222,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 10034,
+        "completion_tokens_details": {
+          "reasoning_tokens": 9798
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 5114,
+        "total_tokens": 15148
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided TypeScript code for security vulnerabilities. \n\nThis code is a build-time code generator that creates configuration files, GraphQL types, and client code based on developer-provided schemas and configurations. \n\nAfter a thorough analysis of the code, including checking for code injection in the generated JavaScript/TypeScript files, path traversal in file writing operations, and sensitive data exposure, **I found no security vulnerabilities.**\n\nThe code correctly employs safe practices, such as:\n- Using `JSON.stringify()` when interpolating variables (like `apiURL`, `token`, `errorPolicy`, and `cacheDir`) into the generated code strings, which effectively prevents Cross-Site Scripting (XSS) and code injection.\n- Parameterizing GraphQL queries in the generated `databaseClient` (e.g., passing `username` and `password` safely via the `variables` object rather than string interpolation).\n- Explicitly stripping known sensitive data (`indexerToken`) before writing schema configurations to disk (lines 100-104).\n- Relying on trusted, developer-controlled configuration paths for file system operations (`fs.outputFile`).",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 376,
+            "start": 376
+          },
+          {
+            "end": 377,
+            "start": 377
+          },
+          {
+            "end": 372,
+            "start": 372
+          }
+        ],
+        "rationale": "The review flags the genClient template, where apiURL, token and errorPolicy are interpolated raw between single quotes in generated code, with no escaping and no JSON.stringify. That is the same missing guard and weakness as the ground truth. It cites lines 376, 377 and, in a note, 372.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":376,\"end\":376},{\"start\":377,\"end\":377},{\"start\":372,\"end\":372}],\"rationale\":\"The review flags the genClient template, where apiURL, token and errorPolicy are interpolated raw between single quotes in generated code, with no escaping and no JSON.stringify. That is the same missing guard and weakness as the ground truth. It cites lines 376, 377 and, in a note, 372.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.795,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 159,
+          "prompt_tokens": 7441,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7600
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 81.603,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4956,
+        "completion_tokens_details": {
+          "reasoning_tokens": 4619
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 5068,
+        "total_tokens": 10024
+      }
+    },
+    "review_error": null,
+    "review_text": "Here are the security vulnerabilities found in the provided code:\n\n- File: index.ts\n- Line: 376\n- Vulnerability class: Code Injection (CWE-94)\n- Quote: `}url: ${this.localContentBuild ? \\`process.env.TINA_LOCAL_URL || '${apiURL}'\\` : \\`'${apiURL}'\\`}, token: '${token}', queries, ${`\n\n- File: index.ts\n- Line: 377\n- Vulnerability class: Code Injection (CWE-94)\n- Quote: `errorPolicy ? \\`errorPolicy: '${errorPolicy}'\\` : ''`\n\n**Explanation:**\nThe `genClient` method dynamically generates TypeScript/JavaScript code by concatenating strings. The variables `apiURL`, `token`, and `errorPolicy` (which are derived from user-controlled configuration or environment variables) are interpolated directly into single-quoted string literals without any escaping or sanitization. \n\nIf an attacker or a malicious configuration provides a payload containing a single quote (e.g., `token: \"malicious', injectedCode: 'payload\"`), they can break out of the string literal and inject arbitrary JavaScript code into the generated client file. When this generated file is subsequently imported or executed, the injected code will run, leading to Remote Code Execution (RCE) in the context of the application. \n\n*(Note: Line 372 is also similarly vulnerable if the local file path `generatedCachePath` contains a single quote, though this is a less likely attack vector compared to configuration values).*",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

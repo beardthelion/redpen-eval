@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-24cc-9352-h2pg",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the infinite loop caused by unvalidated atom sizes in _traverse_atoms, now fixed by the `atom_size < header_size` check in _read_atom_header. The review does not claim an infinite loop or missing atom size validation. It reports other issues: a large read at line 674, a divide by zero, out-of-bounds reads, and struct errors. None of these is the infinite-loop vulnerability, so the review does not report it as still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the infinite loop caused by unvalidated atom sizes in _traverse_atoms, now fixed by the `atom_size < header_size` check in _read_atom_header. The review does not claim an infinite loop or missing atom size validation. It reports other issues: a large read at line 674, a divide by zero, out-of-bounds reads, and struct errors. None of these is the infinite-loop vulnerability, so the review does not report it as still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.719,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 184,
+          "prompt_tokens": 9865,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 10049
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 66.386,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6854,
+        "completion_tokens_details": {
+          "reasoning_tokens": 5961
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 6840,
+        "total_tokens": 13694
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is a review of the code for security vulnerabilities:\n\n### 1. Uncontrolled Resource Consumption / Memory Exhaustion (DoS)\n*   **File:** tinytag.py\n*   **Line:** 674\n*   **Vulnerability Class:** Uncontrolled Resource Consumption (CWE-400) / Memory Allocation with Excessive Size Value (CWE-789)\n*   **Description:** The `atom_size` is parsed directly from the MP4 file header and can be up to 2^64 - 1 bytes. When the parser reaches a leaf node in the atom tree (such as a `data` atom), it attempts to read the entire atom into memory at once using `fh.read(atom_size)`. An attacker can craft a malicious MP4 file with an artificially large `atom_size`, causing the application to attempt to allocate a massive amount of memory. This will lead to memory exhaustion and a Denial of Service (OOM crash).\n*   **Quote:** \n    ```python\n    674                  data = fh.read(atom_size)\n    ```\n\n### 2. Divide By Zero (DoS)\n*   **File:** tinytag.py\n*   **Line:** 874\n*   **Vulnerability Class:** Divide By Zero (CWE-369)\n*   **Description:** In the `_parse_mvhd` method, the `time_scale` value is unpacked directly from the file's binary data. The code later divides `duration` by `time_scale` without checking if `time_scale` is zero. An attacker can provide a malformed file where the `time_scale` is set to `0`, which will raise an unhandled `ZeroDivisionError` and crash the application.\n*   **Quote:** \n    ```python\n    874          yield 'duration', duration / time_scale\n    ```\n\n### 3. Out-of-bounds Read / IndexError (DoS)\n*   **File:** tinytag.py\n*   **Line:** 816\n*   **Vulnerability Class:** Out-of-bounds Read (CWE-125)\n*   **Description:** In the `_parse_mp4a` method, the helper function `_read_descriptor_size` accesses individual bytes of the `data` buffer using an `offset` index. There is no bounds checking to ensure that `offset` is less than `len(data)`. If a malformed `mp4a` atom is shorter than expected, this will raise an unhandled `IndexError`, leading to a Denial of Service. (Similar out-of-bounds reads exist on lines 831, 841, 842, 857, and 858).\n*   **Quote:** \n    ```python\n    816                  byte = data[offset]\n    ```\n\n### 4. Improper Input Validation / Unhandled `struct.error` (DoS)\n*   **File:** tinytag.py\n*   **Line:** 736\n*   **Vulnerability Class:** Improper Input Validation (CWE-20) / Uncaught Exception (CWE-248)\n*   **Description:** Throughout the parsing methods, `struct.unpack` and `struct.unpack_from` are called on the `data` buffer without verifying that the buffer contains enough bytes to satisfy the requested format string. For example, in `_parse_nums`, if `number_data` is less than 6 bytes long, `unpack('>3H', ...)` will raise an unhandled `struct.error`. An attacker can exploit this by providing truncated atoms to crash the application. (This issue is pervasive across multiple lines, including 717, 745, 753, 805, 808, 834, 860, 871, and 873).\n*   **Quote:** \n    ```python\n    736              numbers = unpack('>3H', number_data)\n    ```",
+    "status": "scored"
+  },
+  "guard_class": "type-range-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 759,
+            "start": 759
+          }
+        ],
+        "rationale": "Finding 1 reports an infinite loop in an MP4 atom parser. The 32-bit atom size is read with unpack_from and is not checked against the 8-byte header length. A crafted size of 0 gives atom_size = -8, so fh.seek(-8, SEEK_CUR) re-reads the same header forever. This is the same missing size-range guard and the same infinite-loop weakness as the reference. The review places it in _parse_custom_field rather than _traverse_atoms. That is the only unguarded unpack_from size path in the code, because _traverse_atoms already skips atoms with size <= 0, so I treat it as the same bug.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":759,\"end\":759}],\"rationale\":\"Finding 1 reports an infinite loop in an MP4 atom parser. The 32-bit atom size is read with unpack_from and is not checked against the 8-byte header length. A crafted size of 0 gives atom_size = -8, so fh.seek(-8, SEEK_CUR) re-reads the same header forever. This is the same missing size-range guard and the same infinite-loop weakness as the reference. The review places it in _parse_custom_field rather than _traverse_atoms. That is the only unguarded unpack_from size path in the code, because _traverse_atoms already skips atoms with size <= 0, so I treat it as the same bug.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 8.251,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 929,
+          "prompt_tokens": 9744,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 10673
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 134.742,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14586,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13624
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 6559,
+        "total_tokens": 21145
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is a review of the code for security vulnerabilities. \n\n### 1. Denial of Service (Infinite Loop)\n- **File:** tinytag.py\n- **Line:** 759\n- **Vulnerability Class:** Denial of Service (CWE-835: Loop with Unreachable Exit Condition)\n- **Quote:** `fh.seek(atom_size, SEEK_CUR)`\n- **Description:** In the `_parse_custom_field` method, the `atom_size` is calculated by subtracting `header_len` (8) from the parsed 32-bit integer size. If an attacker provides a crafted MP4 file where a custom field sub-atom has a size of `0` (which typically denotes an atom extending to the end of the file in MP4, but is unhandled here), `atom_size` evaluates to `-8`. If the atom type is neither `b'name'` nor `b'data'`, the `else` block is triggered, and `fh.seek(-8, SEEK_CUR)` moves the file pointer backwards by 8 bytes. The subsequent `fh.read(header_len)` will read the exact same 8 bytes again, resulting in an infinite loop that locks up the application and consumes 100% of the CPU thread.\n\n### 2. Denial of Service (Memory Exhaustion)\n- **File:** tinytag.py\n- **Line:** 652\n- **Vulnerability Class:** Denial of Service (CWE-789: Memory Allocation with Excessive Size Value)\n- **Quote:** `for fieldname, value in sub_path(fh.read(atom_size)):`\n- **Description:** In the `_traverse_atoms` method, `atom_size` is read directly from the file's atom header (which can be up to a 64-bit integer) and is passed directly to `fh.read(atom_size)` without any upper-bound validation. An attacker can craft a malicious MP4 file with an artificially massive `atom_size` (e.g., 2 GB). When the parser encounters a callable leaf node in the parsing tree, it will attempt to read the entire declared size into memory at once, leading to a `MemoryError` and crashing the application.\n\n### 3. Denial of Service (Divide By Zero)\n- **File:** tinytag.py\n- **Line:** 850\n- **Vulnerability Class:** Denial of Service (CWE-369: Divide By Zero)\n- **Quote:** `yield 'duration', duration / time_scale`\n- **Description:** In the `_parse_mvhd` method, the `time_scale` value is unpacked directly from the file's binary data and used as a divisor to calculate the media's duration. If a maliciously crafted or corrupted file provides a `time_scale` of `0`, a `ZeroDivisionError` exception will be raised. Because this exception is unhandled, it will crash the parser and the calling application.\n\n### 4. Denial of Service (Unhandled Exceptions / Out-of-bounds Read)\n- **File:** tinytag.py\n- **Line:** 847\n- **Vulnerability Class:** Denial of Service (CWE-125: Out-of-bounds Read / CWE-20: Improper Input Validation)\n- **Quote:** `time_scale, duration = unpack_from('>II', data, 12)`\n- **Description:** Throughout the parsing methods (e.g., `_parse_mvhd`, `_parse_mp4a`, `_parse_alac`, `_nums_parser`), the code assumes that the `data` buffer is well-formed and large enough to unpack values or access specific array indices. If an attacker provides a truncated atom (e.g., an atom size that is too small for the expected structure), `struct.unpack_from` will raise a `struct.error`, or direct array indexing (e.g., `data[0]` on line 844, `data[offset]` on line 792) will raise an `IndexError`. These unhandled exceptions will crash the application. This pattern occurs on line 847 and multiple other lines (e.g., 690, 709, 781, 792, 810, 832, 844, 849).",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

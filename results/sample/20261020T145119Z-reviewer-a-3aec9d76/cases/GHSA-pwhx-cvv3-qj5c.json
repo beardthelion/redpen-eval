@@ -1,0 +1,131 @@
+{
+  "case_id": "GHSA-pwhx-cvv3-qj5c",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched code is in genClient (lines 368-384), where apiURL, token, cacheDir and errorPolicy are now emitted through JSON.stringify. The review does not claim a flaw there; it says genClient only embeds config.token. Its code-injection finding (Finding 1) targets f.name interpolation in genDatabaseClient (lines 288-332), which is a different, unfixed sink and not the quoted-literal interpolation that was patched. Findings 2 and 3 are unrelated to the patched issue.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched code is in genClient (lines 368-384), where apiURL, token, cacheDir and errorPolicy are now emitted through JSON.stringify. The review does not claim a flaw there; it says genClient only embeds config.token. Its code-injection finding (Finding 1) targets f.name interpolation in genDatabaseClient (lines 288-332), which is a different, unfixed sink and not the quoted-literal interpolation that was patched. Findings 2 and 3 are unrelated to the patched issue.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 5.839,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 575,
+          "prompt_tokens": 7786,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 8361
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 280.291,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 21637,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 21075,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1394480000,
+        "num_sources_used": 0,
+        "prompt_tokens": 5677,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 5677
+        },
+        "total_tokens": 27314
+      }
+    },
+    "review_error": null,
+    "review_text": "No indexer-token leak like CVE-2024-45391 shows up on the client-generation path. `stripSearchTokenFromConfig` runs before `_schema.json` is written, and `genClient` only embeds `config.token`. The issues below are separate.\n\n**Finding 1: Code injection (CWE-94) and GraphQL injection (CWE-943)**\nFile: `index.ts`, lines 288, 290, 293, 323, 332\n\n```288:288:index.ts\n              return `id:${f.name}`;\n```\n\n```290:290:index.ts\n              return `${f.name}`;\n```\n\n```293:293:index.ts\n            return `_password: ${f.name} { passwordChangeRequired }`;\n```\n\n```323:323:index.ts\n                 ${authFields.join(' ')}\n```\n\n```332:332:index.ts\n      query: \\`query authz { authorize { ${authFields.join(' ')} } }\\`,\n```\n\n`f.name` is copied into generated source with no identifier check. Those strings are inserted into a generated template literal (`query: \\`...\\``). A name containing a backtick, `${...}`, or extra GraphQL selection syntax becomes part of the program and of the auth/authz query. This is exploitable only if schema field names are not fully trusted; it is still an unsafe codegen sink.\n\n**Finding 2: Sensitive data exposure via logging (CWE-532)**\nFile: `index.ts`, line 312\n\n```312:312:index.ts\n      verbose: true,\n```\n\nThe generated `databaseRequest` always enables verbose mode, and `authenticate` passes `password` in `variables` (line 326). Any verbose logging of variables in `resolve` will record end-user credentials.\n\n**Finding 3: Improper encoding in API URL construction (CWE-116)**\nFile: `index.ts`, lines 246 and 252\n\n```246:246:index.ts\n      let tinaCloudUrl = `${baseUrl}/${version}/content/${clientId}/github/${branch}`;\n```\n\n```252:252:index.ts\n        apiURL = `${baseUrl}/${version}/content/${clientId}/github/${branch}`;\n```\n\n`clientId` and `branch` are interpolated into the URL with no encoding. `?`, `#`, whitespace, and `..` can change the path or query. Slashes in branch names may be intentional; the other characters are not neutralized. Line 256 assigns `contentApiUrlOverride` with no scheme or host check, so a non-HTTPS override is paired with the embedded token in `genClient`.",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 377,
+            "start": 372
+          }
+        ],
+        "rationale": "Finding 1 describes values (cacheDir, apiURL, token, errorPolicy) interpolated raw inside single-quoted literals in the generated client template, so a quote breaks out and injects code. This is the known escaping-encoding weakness, where the fix is JSON.stringify. The review cites lines 372-377, which cover the vulnerable template.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":372,\"end\":377}],\"rationale\":\"Finding 1 describes values (cacheDir, apiURL, token, errorPolicy) interpolated raw inside single-quoted literals in the generated client template, so a quote breaks out and injects code. This is the known escaping-encoding weakness, where the fix is JSON.stringify. The review cites lines 372-377, which cover the vulnerable template.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.896,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 157,
+          "prompt_tokens": 7733,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7890
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 47.302,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4249,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 3741,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 350480000,
+        "num_sources_used": 0,
+        "prompt_tokens": 5641,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 5641
+        },
+        "total_tokens": 9890
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has several security vulnerabilities, all stemming from unsanitized config and schema values being interpolated into generated JavaScript, GraphQL, and URLs.\n\n**1. Code injection (CWE-94)**\nFile: `index.ts`, lines 372–377\n`cacheDir`, `apiURL`, `token`, and `errorPolicy` are interpolated into single-quoted JavaScript string literals with no escaping. A value containing a single quote breaks out of the literal and injects arbitrary code into the generated client.\n```\n372:              this.configManager.generatedCachePath\n376:      }url: ${this.localContentBuild ? `process.env.TINA_LOCAL_URL || '${apiURL}'` : `'${apiURL}'`}, token: '${token}', queries, ${\n377:        errorPolicy ? `errorPolicy: '${errorPolicy}'` : ''\n```\n\n**2. GraphQL injection (CWE-943)**\nFile: `index.ts`, lines 288–293 and 323, 332\nSchema field names are concatenated into generated query strings without being checked as GraphQL identifiers. A crafted field name can change the `authenticate` and `authorize` selections.\n```\n288:              return `id:${f.name}`;\n290:              return `${f.name}`;\n293:            return `_password: ${f.name} { passwordChangeRequired }`;\n323:                 ${authFields.join(' ')}\n332:      query: \\`query authz { authorize { ${authFields.join(' ')}} }\\`,\n```\n\n**3. URL injection (CWE-116)**\nFile: `index.ts`, lines 246 and 252\n`clientId` and `branch` are placed into the content API URL without `encodeURIComponent`. Characters such as `/`, `?`, or `#` can change the request path or query.\n```\n246:      let tinaCloudUrl = `${baseUrl}/${version}/content/${clientId}/github/${branch}`;\n252:        apiURL = `${baseUrl}/${version}/content/${clientId}/github/${branch}`;\n```\n\n**4. Sensitive data in logs (CWE-532)**\nFile: `index.ts`, line 312\nThe generated `databaseRequest` hardcodes `verbose: true`, and `authenticate` passes `password` through that same request path, so credentials can end up in logs.\n```\n312:      verbose: true,\n```",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

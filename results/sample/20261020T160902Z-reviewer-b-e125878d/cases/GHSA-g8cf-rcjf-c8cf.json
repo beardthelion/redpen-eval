@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-g8cf-rcjf-c8cf",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is unbounded recursion in decodeValue over allOf/anyOf/oneOf without cycle detection. The review does not mention it. It reports a deepSet panic on line 955 and a zip bomb on line 1724, both unrelated issues. The code already has the cycle guard (decodeValueGuarded with seen), and the review does not claim that guard is missing.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is unbounded recursion in decodeValue over allOf/anyOf/oneOf without cycle detection. The review does not mention it. It reports a deepSet panic on line 955 and a zip bomb on line 1724, both unrelated issues. The code already has the cycle guard (decodeValueGuarded with seen), and the review does not claim that guard is missing.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.892,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 159,
+          "prompt_tokens": 31062,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 31221
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 143.321,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 16047,
+        "completion_tokens_details": {
+          "reasoning_tokens": 15559
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 26300,
+        "total_tokens": 42347
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Denial of Service (Panic)\n**File:** `req_resp_decoder.go`\n**Line:** 955\n**Vulnerability Class:** Denial of Service (Panic / Improper Input Validation)\n**Quote:** `m = m[key].(map[string]any)`\n\n**Description:** \nWhen parsing nested objects (such as those from `deepObject` query parameters), the `deepSet` function is called to build a nested map structure. If an attacker provides a payload that assigns both a primitive value and a nested object to the same key path (e.g., `?param[a]=1&param[a][b]=2`), `deepSet` will attempt to process both. Because the properties are extracted into a map (`props`) and map iteration order in Go is randomized (in `makeObject` at line 964), there is a roughly 50% chance that the primitive value (`\"1\"`) is processed before the nested object (`\"2\"`). When this happens, `deepSet` will attempt to type-assert the primitive string `\"1\"` into a `map[string]any` on line 955, which will cause a runtime panic and crash the handling goroutine, leading to a Denial of Service.\n\n### 2. Denial of Service (Zip Bomb)\n**File:** `req_resp_decoder.go`\n**Line:** 1724\n**Vulnerability Class:** Denial of Service (Zip Bomb / Uncontrolled Resource Consumption)\n**Quote:** `content = append(content, buffer[:n]...)`\n\n**Description:** \nThe `ZipFileBodyDecoder` function reads and decompresses the entire contents of a zip archive into memory without enforcing any limits on the uncompressed size or the number of files. An attacker can exploit this by uploading a highly compressed malicious zip file (a \"zip bomb\"). Even if the server restricts the incoming request body size (e.g., via `http.MaxBytesReader`), the small compressed payload will expand to a massive size in memory during decompression, exhausting server memory and causing a Denial of Service. (Note: The comment on line 1693 explicitly acknowledges this risk, but the vulnerability remains present in the code).",
+    "status": "scored"
+  },
+  "guard_class": "size-cap",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports two issues: a type assertion panic in deepSet (line 945) and an unbounded zip decompression in ZipFileBodyDecoder (line 1713). Neither describes the known vulnerability, which is unbounded recursion in decodeValue through allOf/anyOf/oneOf with no cycle detection on circular schemas. The review never mentions schema recursion or a stack overflow, so there is no matching finding.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review reports two issues: a type assertion panic in deepSet (line 945) and an unbounded zip decompression in ZipFileBodyDecoder (line 1713). Neither describes the known vulnerability, which is unbounded recursion in decodeValue through allOf/anyOf/oneOf with no cycle detection on circular schemas. The review never mentions schema recursion or a stack overflow, so there is no matching finding.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.958,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 170,
+          "prompt_tokens": 30874,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 31044
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 169.608,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 25662,
+        "completion_tokens_details": {
+          "reasoning_tokens": 25156
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 26100,
+        "total_tokens": 51762
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Denial of Service (DoS) / Unhandled Panic\n**File:** `req_resp_decoder.go`\n**Line:** 945\n**Vulnerability Class:** Denial of Service (DoS)\n\n**Description:**\nThe `deepSet` function is vulnerable to an unhandled type assertion panic. When parsing nested parameters (like `deepObject` query parameters or form values), the function iterates over the keys to build a nested map structure. However, it does not verify if the intermediate value `m[key]` is actually of type `map[string]any` before asserting it. \n\nBecause Go randomizes map iteration order, if an attacker supplies conflicting keys where one implies a primitive value and another implies a nested object (e.g., `?param[a]=1&param[a][b]=2`), the parser might process the primitive value first (`m[\"a\"] = \"1\"`). When it subsequently attempts to process the nested value, the type assertion `m[key].(map[string]any)` will panic because the underlying value is a `string`, crashing the application.\n\n**Quote:**\n```go\n  945  \t\tm = m[key].(map[string]any)\n```\n\n### 2. Denial of Service (DoS) / Zip Bomb (Unbounded Decompression)\n**File:** `req_resp_decoder.go`\n**Line:** 1713\n**Vulnerability Class:** Denial of Service (DoS)\n\n**Description:**\nThe `ZipFileBodyDecoder` function is susceptible to a Zip Bomb attack. It iterates through all the files within a provided ZIP archive and decompresses their contents into memory (`content` byte slice) without enforcing any limits on the uncompressed size or the number of files. \n\nAn attacker can upload a maliciously crafted ZIP file that is extremely small in its compressed form (e.g., a few kilobytes) but expands to petabytes of data when decompressed. This will rapidly exhaust the server's memory, leading to an Out-Of-Memory (OOM) crash. Even though the function has a warning comment, it remains a severe vulnerability if this decoder is registered and exposed to untrusted input.\n\n**Quote:**\n```go\n  1713  \t\t\t\t\tcontent = append(content, buffer[:n]...)\n```",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

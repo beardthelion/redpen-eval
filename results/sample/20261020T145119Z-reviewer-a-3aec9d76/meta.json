@@ -1,0 +1,82 @@
+{
+  "case_ids": [
+    "GHSA-23vg-4cjm-66q5",
+    "GHSA-24cc-9352-h2pg",
+    "GHSA-2cvf-wqm6-wr9g",
+    "GHSA-47c3-hpmg-7j6p",
+    "GHSA-637c-6jxx-4rwm",
+    "GHSA-685w-q87j-wqw3",
+    "GHSA-74vm-87hj-r66f",
+    "GHSA-c42q-qvc3-j6vg",
+    "GHSA-cv23-7vc5-jfh7",
+    "GHSA-fmxq-cgp8-87wp",
+    "GHSA-g8cf-rcjf-c8cf",
+    "GHSA-h4mw-j7qp-8mwm",
+    "GHSA-j3hg-9rp3-5hw9",
+    "GHSA-p7v4-vr35-mj6f",
+    "GHSA-pw5q-rjx4-7f7p",
+    "GHSA-pwhx-cvv3-qj5c",
+    "GHSA-qfxx-c367-67f8",
+    "GHSA-qj98-gp63-54xj",
+    "GHSA-qx66-fv34-fjm8",
+    "GHSA-v75v-6fpf-gvw8",
+    "GHSA-vrcc-3ch7-hppw",
+    "GHSA-w5f2-9q9c-ff4h",
+    "GHSA-x34j-47hf-4xg7",
+    "GHSA-x586-xvc8-g7q6",
+    "GHSA-xv7q-fvmc-jx96"
+  ],
+  "complete": true,
+  "counts": {
+    "cases": 25,
+    "done": 25,
+    "judge_errors": 0,
+    "reviewer_errors": 0
+  },
+  "dataset": {
+    "case_set_sha256": "11707061da2024ec4106bfad3ce4c7323e6e803c411c423e1aafe2f89db123f4",
+    "path": "dataset/v1",
+    "version": "v1"
+  },
+  "finished_utc": "2026-10-20T15:32:27Z",
+  "harness": {
+    "python": "3.12.3",
+    "redpen_version": "0.1.0"
+  },
+  "judge": {
+    "adapter": "openai_compat",
+    "api_key_env": "AIMLAPI_API_KEY",
+    "base_url": "https://api.aimlapi.com/v1",
+    "config_sha256": "486762c54967e570399ba0604de663f53b877e437517a031c9bd59bc777c6f50",
+    "max_tokens": 1024,
+    "model": "anthropic/claude-sonnet-5-5",
+    "name": "llm",
+    "structured_output": "json_schema",
+    "temperature": 0
+  },
+  "prompts": {
+    "judge_sha256": "1b281463a5877cde3ffadc1ace4f482c72a6133e1d7bb7d56c345183fd7816b3",
+    "judge_version": "judge-v1",
+    "review_sha256": "8fb0b809248852887e7c60e112d0875fd9f7adb0527dd813d98e9b7840f5bc24",
+    "review_version": "review-v1"
+  },
+  "reviewer": {
+    "adapter": "openai_compat",
+    "api_key_env": "AIMLAPI_API_KEY",
+    "base_url": "https://api.aimlapi.com/v1",
+    "config_sha256": "3aec9d764c8394a54419e5967490d4e86d7abd645f5a01f40571dd22aa422378",
+    "max_tokens": 2048,
+    "model": "x-ai/grok-4-7",
+    "name": "reviewer-a",
+    "seed": 1,
+    "temperature": 0
+  },
+  "run_id": "20261020T145119Z-reviewer-a-3aec9d76",
+  "scoring": {
+    "bootstrap_resamples": 1000,
+    "bootstrap_seed": 0,
+    "formula": "pair-v1",
+    "location_tolerance": 5
+  },
+  "started_utc": "2026-10-20T14:51:19Z"
+}

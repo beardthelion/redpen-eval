@@ -1,0 +1,123 @@
+{
+  "case_id": "GHSA-xv7q-fvmc-jx96",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is email-fallback account linking without a verified-email check. The patched code gates it with `emailFallbackAllowed := provider.EmailFallback && bool(cl.EmailVerified)`, and the review does not claim that the email path is still unverified. Finding 2 covers username fallback at lines 426 and 429 (where the email is empty because it is unverified). That is a different mechanism: linking on an unverified preferred_username, not the email-verification gap. The SSRF and type-assertion findings are unrelated. None of them reports the patched vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is email-fallback account linking without a verified-email check. The patched code gates it with `emailFallbackAllowed := provider.EmailFallback && bool(cl.EmailVerified)`, and the review does not claim that the email path is still unverified. Finding 2 covers username fallback at lines 426 and 429 (where the email is empty because it is unverified). That is a different mechanism: linking on an unverified preferred_username, not the email-verification gap. The SSRF and type-assertion findings are unrelated. None of them reports the patched vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.322,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 220,
+          "prompt_tokens": 13852,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 14072
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 78.32,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 7946,
+        "completion_tokens_details": {
+          "reasoning_tokens": 7181
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 10067,
+        "total_tokens": 18013
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is a review of the provided code for security vulnerabilities:\n\n### 1. Server-Side Request Forgery (SSRF)\n**File:** `openid.go`\n**Line:** 376\n**Vulnerability Class:** Server-Side Request Forgery (SSRF)\n**Quote:** `avatarData, err := utils.DownloadImage(pictureURL)`\n\n**Description:** \nThe application automatically downloads the user's avatar using the URL provided in the OpenID Connect `picture` claim. Because this claim is often user-controlled within the Identity Provider (IdP) profile, an attacker can supply a malicious URL (e.g., `http://127.0.0.1:8080/admin` or `http://169.254.169.254/latest/meta-data/`). If `utils.DownloadImage` does not strictly validate and restrict the destination IP addresses and schemes, the server can be forced to make arbitrary HTTP requests to internal network resources.\n\n### 2. Account Takeover / Authentication Bypass via Username Fallback\n**File:** `openid.go`\n**Lines:** 426, 429\n**Vulnerability Class:** Account Takeover / Authentication Bypass\n**Quote:** \nLine 426: `searches = append(searches, &user.User{Issuer: user.IssuerLocal, Username: idToken.Subject, Email: fallbackEmail})`\nLine 429: `searches = append(searches, &user.User{Issuer: user.IssuerLocal, Username: preferred, Email: fallbackEmail})`\n\n**Description:** \nWhen `UsernameFallback` is enabled and `emailFallbackAllowed` is false (meaning `fallbackEmail` is `\"\"`), the application attempts to link the OIDC login to an existing local account using only the `Username` and `IssuerLocal`. The `preferred_username` claim is generally user-controlled and unverified in most IdPs. An attacker can change their `preferred_username` in the IdP to match the username of a target local user (e.g., an administrator). Upon logging in, the application will match the attacker's OIDC session to the victim's local account, granting the attacker full access to it.\n\n### 3. Denial of Service (DoS) via Unhandled Type Assertions\n**File:** `openid.go`\n**Lines:** 314, 319, 324\n**Vulnerability Class:** Denial of Service (DoS) / Unhandled Type Assertion\n**Quote:** \nLine 314: `name = t[\"name\"].(string)`\nLine 319: `description = t[\"description\"].(string)`\nLine 324: `isPublic = t[\"isPublic\"].(bool)`\n\n**Description:** \nWhen parsing the `vikunja_groups` claim from the OIDC token, the application uses direct type assertions to extract the `name`, `description`, and `isPublic` fields. If an attacker controls their claims in the IdP (or if the IdP is misconfigured) and provides a token where these fields are of unexpected JSON types (e.g., providing an integer for `name` or a string for `isPublic`), the type assertion will fail and cause a runtime panic. This will crash the application process, leading to a Denial of Service. (Note: The application correctly uses a safe type switch for `oidcID` on line 332, but fails to do so for the other fields).",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 406,
+            "start": 406
+          },
+          {
+            "end": 414,
+            "start": 414
+          }
+        ],
+        "rationale": "Finding 3 describes account takeover through the email/username fallback linking a local account on unverified IdP claims, without confirming ownership. This matches the missing verified-email guard on the email fallback. It cites line 414 (the email-only lookup) and line 406 (the username+email lookup).",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":406,\"end\":406},{\"start\":414,\"end\":414}],\"rationale\":\"Finding 3 describes account takeover through the email/username fallback linking a local account on unverified IdP claims, without confirming ownership. This matches the missing verified-email guard on the email fallback. It cites line 414 (the email-only lookup) and line 406 (the username+email lookup).\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.837,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 146,
+          "prompt_tokens": 13419,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 13565
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 113.745,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 11709,
+        "completion_tokens_details": {
+          "reasoning_tokens": 11009
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 9733,
+        "total_tokens": 21442
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Race Condition / Concurrent Modification\n- **File:** `openid.go`\n- **Line:** 595\n- **Vulnerability Class:** Race Condition (CWE-362)\n- **Quote:** `provider.Oauth2Config.RedirectURL = cb.RedirectURL`\n- **Description:** The `provider` object and its `Oauth2Config` are shared across multiple goroutines handling concurrent authentication callbacks. Modifying the `RedirectURL` field directly on the shared `Oauth2Config` struct introduces a data race. If multiple users log in simultaneously, one user's request may overwrite the `RedirectURL` of another user's request just before `Exchange()` is called. This can lead to authentication failures (Denial of Service) or undefined behavior. To fix this, a copy of the configuration should be made before modifying it (e.g., `cfg := *provider.Oauth2Config; cfg.RedirectURL = cb.RedirectURL`).\n\n### 2. Server-Side Request Forgery (SSRF)\n- **File:** `openid.go`\n- **Line:** 355\n- **Vulnerability Class:** Server-Side Request Forgery (SSRF) (CWE-918)\n- **Quote:** `avatarData, err := utils.DownloadImage(pictureURL)`\n- **Description:** The `pictureURL` is extracted from the OIDC provider's claims (`cl.Picture`). If an attacker can control their profile picture URL on the OIDC provider, they can supply an internal network URL (e.g., `http://169.254.169.254/latest/meta-data/` or `http://localhost:6379/`). The application will blindly make an HTTP GET request to this URL to download the avatar. This can be exploited to scan internal networks or interact with internal services.\n\n### 3. Improper Authentication / Account Takeover via Unverified Claims\n- **File:** `openid.go`\n- **Lines:** 406, 414\n- **Vulnerability Class:** Improper Authentication / Account Takeover (CWE-287, CWE-306)\n- **Quote:** \n  - Line 406: `searches = append(searches, &user.User{Issuer: user.IssuerLocal, Username: preferred, Email: fallbackEmail})`\n  - Line 414: `searches = append(searches, &user.User{Issuer: user.IssuerLocal, Email: cl.Email})`\n- **Description:** When `UsernameFallback` or `EmailFallback` is enabled, the application attempts to link an incoming OIDC login to an existing local account using the `preferred_username` or `email` claims. Because these claims are frequently user-controllable on the Identity Provider (IdP) side and are not strictly verified by the application to ensure ownership, an attacker can change their IdP username or email to match a target user (e.g., \"admin\"). Upon logging in, the application will link the attacker's OIDC session to the victim's local account, resulting in a full account takeover.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

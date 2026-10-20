@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-p7v4-vr35-mj6f",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability was a missing restore-gate check (EnableExperimentalRestoreViaCreate) at the start of CRImportCheckpoint, which now exists at lines 246-248. The review never claims the gate is missing; it does not mention it at all. Its findings concern symlink handling, image pulls, sandbox ID taken from the checkpoint, path opening, and cleanup. Finding 3 comes closest, but it is about sandbox identity validation, not the restore gate. These are separate issues, so the review does not report the patched vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability was a missing restore-gate check (EnableExperimentalRestoreViaCreate) at the start of CRImportCheckpoint, which now exists at lines 246-248. The review never claims the gate is missing; it does not mention it at all. Its findings concern symlink handling, image pulls, sandbox ID taken from the checkpoint, path opening, and cleanup. Finding 3 comes closest, but it is about sandbox identity validation, not the restore gate. These are separate issues, so the review does not report the patched vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.026,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 214,
+          "prompt_tokens": 10492,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 10706
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 201.701,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 16459,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 14706,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1093620000,
+        "num_sources_used": 0,
+        "prompt_tokens": 6168,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 6168
+        },
+        "total_tokens": 22627
+      }
+    },
+    "review_error": null,
+    "review_text": "Security review of `container_checkpoint_linux.go` (`CRImportCheckpoint`). Findings below are limited to what this function does with checkpoint-controlled data. Several later helpers (`checkpointArchiveEntryAllowed`, `assertCheckpointDirSafe`, `copyNoFollow`, `filterAndMergeAnnotations`, `archive.Apply`) are not in this file; where impact depends on them, that is called out.\n\n**1. CWE-59 (improper link resolution) — metadata read before any symlink check**  \nFile: `container_checkpoint_linux.go`, lines 368–381 (safety check only at 551)\n\n```368:370:container_checkpoint_linux.go\n\tif _, err := crmetadata.ReadJSONFile(dumpSpec, mountPoint, crmetadata.SpecDumpFile); err != nil {\n\t\treturn \"\", fmt.Errorf(\"failed to read %q: %w\", crmetadata.SpecDumpFile, err)\n\t}\n```\n\nOn the OCI-image path the snapshot is mounted and `spec.dump` / `config.dump` / `status.dump` are read immediately. `assertCheckpointDirSafe` runs only later, and only on `restoreDir` after `fs.CopyDir`, not on `mountPoint`. Unlike the log restore at line 593, these reads do not use `copyNoFollow`. If `ReadJSONFile` follows links (normal `os.ReadFile` behavior), an absolute symlink in the image is resolved as root before any of the later checks. Those bytes are then treated as container config (findings 2 and 3). The tar path is stricter because `checkpointArchiveEntryAllowed` runs before the read; the OCI path is not.\n\n**2. CWE-829 (untrusted functionality inclusion) — checkpoint chooses the image to pull**  \nFile: `container_checkpoint_linux.go`, lines 447–462\n\n```459:461:container_checkpoint_linux.go\n\t\tcontainerdImage, err = c.client.Pull(ctx, config.RootfsImageRef)\n\t\tif err != nil {\n\t\t\treturn \"\", fmt.Errorf(\"failed to pull checkpoint base image %s: %w\", config.RootfsImageRef, err)\n```\n\n`config` is deserialized from the checkpoint, not from the CRI request. `Pull` uses `config.RootfsImageRef` with the daemon’s credentials and registry config. The only reference check is after the pull, and it checks `config.RootfsImageName`, not `RootfsImageRef`:\n\n```465:467:container_checkpoint_linux.go\n\tif _, err := reference.ParseAnyReference(config.RootfsImageName); err != nil {\n\t\treturn \"\", fmt.Errorf(\"error parsing reference: %q is not a valid repository/tag %v\", config.RootfsImageName, err)\n\t}\n```\n\nA crafted checkpoint can trigger a pull of a different ref than the name later recorded (finding 5), including a registry the node will authenticate to. No allowlist or digest pin is applied to `RootfsImageRef` in this function.\n\n**3. CWE-807 (trust of untrusted input in a security decision) — checkpoint sets sandbox identity**  \nFile: `container_checkpoint_linux.go`, lines 384–387 and 511\n\n```384:387:container_checkpoint_linux.go\n\tif meta.SandboxID == \"\" {\n\t\t// restore into previous sandbox\n\t\tmeta.SandboxID = dumpSpec.Annotations[annotations.SandboxID]\n\t\tctrID = config.ID\n```\n\n`dumpSpec` comes from the checkpoint. If the caller leaves `SandboxID` empty, the archive selects the sandbox id, and `config.ID` is taken from the same archive. That id is then passed into container creation:\n\n```511:511:container_checkpoint_linux.go\n\t\t\tsandboxID:             meta.SandboxID,\n```\n\nwhile status, PID, and netns still come from the caller-supplied `sandbox` (`sandbox.ID` at line 501, `cstatus.Pid` / `sandbox.NetNSPath` at 517–518). Nothing in this function checks that the annotation matches `sandbox.ID` or that the caller may join that sandbox. Checkpoint annotations are also merged and then replace the request annotations (`filterAndMergeAnnotations` at 439–443, assignment at 494). Whether dangerous keys survive depends on that helper, which is not in this file; the sandbox-id assignment does not.\n\n**4. CWE-73 (external control of file name/path) — image string opened as a local path**  \nFile: `container_checkpoint_linux.go`, lines 260 and 316–318\n\n```316:318:container_checkpoint_linux.go\n\t\tarchiveFile, err = os.Open(inputImage)\n\t\tif err != nil {\n\t\t\treturn \"\", fmt.Errorf(\"failed to open checkpoint archive %s for import: %w\", inputImage, err)\n```\n\n`inputImage` is `meta.Config.Image.Image`. If `checkIfCheckpointOCIImage` returns an empty id, that string is opened with no directory prefix, `filepath.IsLocal` / clean check, or `O_NOFOLLOW`. Any path the daemon can open is accepted (sensitive files, FIFOs, devices). The error path also echoes the path. There is no size cap before `archive.Apply` (lines 354–359 and 580), so a hostile tar can fill the disk (CWE-409) under the daemon’s credentials.\n\n**5. CWE-345 (insufficient authenticity) — status image name replaced from the checkpoint**  \nFile: `container_checkpoint_linux.go`, lines 498–499\n\n```498:499:container_checkpoint_linux.go\n\tmeta.Config.Image.Image = containerStatus.Image.GetImage()\n\tmeta.Config.Image.UserSpecifiedImage = containerStatus.Image.GetUserSpecifiedImage()\n```\n\n`containerStatus` is checkpoint JSON. The image actually resolved/pulled is `config.RootfsImageRef` (lines 447–459), but the metadata image name is overwritten with the archive’s claim. Status and audit can show a benign name while the pulled ref differs. No digest comparison between `containerStatus.Image` and `config.RootfsImageRef` is done here.\n\n**6. CWE-459 / CWE-404 (incomplete cleanup) — snapshot mount not released on error**  \nFile: `container_checkpoint_linux.go`, lines 311–313 vs 546\n\n```311:313:container_checkpoint_linux.go\n\t\tif err := mount.All(mounts, mountPoint); err != nil {\n\t\t\treturn \"\", err\n\t\t}\n```\n\n`mount.All` is not paired with a `defer` unmount. `mount.UnmountAll` runs only on the OCI success path after `createContainer` and `fs.CopyDir` (line 546). Any failure from the JSON reads, pull, resolve loop, or `createContainer` returns with the view still mounted. The `defer` at 273–277 only `RemoveAll`s the temp dir, which does not unmount. `s.View` is also never `Remove`d. Repeated failed restores can exhaust mount/snapshot resources. `assertCheckpointDirSafe` (line 551) also runs only after `createContainer` (line 506), so a failing safety check still leaves a created container and a `restoreDir` that may already contain links recreated by `fs.CopyDir`.\n\n**Not treated as vulnerabilities in this file**\n\n- Tar entry-type filtering (lines 326–332 and 556–562) and the `restoreDir` confinement (lines 534–540, mode `0o700`) are real mitigations for symlink/device extraction and state-dir clobbering, assuming `archive.Apply` honors the filter and rejects non-local names. This function itself never rejects `..` or absolute `hdr.Name`; that gap is only safe if `archive.Apply` enforces it.\n- The env rebuild at lines 484–488 duplicates image env; that is a logic bug, not a security boundary failure.\n- `archiveFile.Seek(0, 0)` at line 579 ignores the error; failed restore, not a memory-safety issue.",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The known vulnerability is a missing restore-gate authorization check in CRImportCheckpoint, so the checkpoint's destination security context is applied unchecked. None of the six findings describes that. They cover symlink following, an untrusted image pull, image identity spoofing, a sandbox ID taken from the archive, archive filter weaknesses, and a mount leak. Finding 4 comes closest because the checkpoint supplies the sandbox ID, but it frames this as an identity mismatch (CWE-807) and never mentions a missing restore gate or authorization check.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The known vulnerability is a missing restore-gate authorization check in CRImportCheckpoint, so the checkpoint's destination security context is applied unchecked. None of the six findings describes that. They cover symlink following, an untrusted image pull, image identity spoofing, a sandbox ID taken from the archive, archive filter weaknesses, and a mount leak. Finding 4 comes closest because the checkpoint supplies the sandbox ID, but it frames this as an identity mismatch (CWE-807) and never mentions a missing restore gate or authorization check.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.195,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 215,
+          "prompt_tokens": 9160,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 9375
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 351.049,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 27488,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 26549,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1754480000,
+        "num_sources_used": 0,
+        "prompt_tokens": 6124,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 6124
+        },
+        "total_tokens": 33612
+      }
+    },
+    "review_error": null,
+    "review_text": "The checkpoint archive and OCI image are treated as trusted input for privileged operations. Six issues follow.\n\n**1. CWE-59 (link following before validation)**  \nFile: `container_checkpoint_linux.go`, line 365  \n`if _, err := crmetadata.ReadJSONFile(dumpSpec, mountPoint, crmetadata.SpecDumpFile); err != nil {`  \nSame pattern at lines 371 and 377. On the OCI path the image is mounted at `mountPoint` (line 308) and `spec.dump`, `config.dump`, and `status.dump` are opened before any link check. `assertCheckpointDirSafe` runs only later, and only on `restoreDir` (line 548), not on `mountPoint`. A checkpoint layer can make those names symlinks; a normal open follows them and the parsed result is then used for the sandbox id, annotations, and image pull. The tar path never calls `assertCheckpointDirSafe` at all.\n\n**2. CWE-494 / CWE-918 (untrusted checkpoint selects the pull)**  \nFile: `container_checkpoint_linux.go`, line 456  \n`containerdImage, err = c.client.Pull(ctx, config.RootfsImageRef)`  \n`config` is loaded from checkpoint JSON (lines 370–373). `RootfsImageRef` is not required to be digest-pinned and is not compared to the caller’s image. The only reference check is on a different field and runs after the pull:  \nLine 462: `if _, err := reference.ParseAnyReference(config.RootfsImageName); err != nil {`  \nA malicious checkpoint can point the daemon at an arbitrary registry reference (mutable tag, internal address, unexpected repository).\n\n**3. CWE-345 (image identity spoofing)**  \nFile: `container_checkpoint_linux.go`, line 495  \n`meta.Config.Image.Image = containerStatus.Image.GetImage()`  \nLine 496: `meta.Config.Image.UserSpecifiedImage = containerStatus.Image.GetUserSpecifiedImage()`  \nThe image that was actually resolved is `config.RootfsImageRef`. The name recorded on the container comes from `containerStatus` in the same untrusted archive and is not checked against that ref, so status can report a different image than the rootfs that was pulled.\n\n**4. CWE-807 (sandbox id taken from the archive)**  \nFile: `container_checkpoint_linux.go`, line 383  \n`meta.SandboxID = dumpSpec.Annotations[annotations.SandboxID]`  \nIf `meta.SandboxID` is empty, the sandbox id (and `ctrID = config.ID` on line 384) comes from checkpoint annotations. `createContainer` is still called with the caller’s `sandbox` object (pid and netns from lines 498–515) but with this archive-controlled `sandboxID` (line 508). Those two identities are not required to match.\n\n**5. CWE-22 / CWE-693 (archive filter is not a path boundary and fails open)**  \nFile: `container_checkpoint_linux.go`, line 326  \n`if !checkpointArchiveEntryAllowed(hdr) {`  \nLine 344: `if strings.HasPrefix(hdr.Name, pattern) {`  \nDisallowed types are skipped (`return false, nil` at lines 328 and 558), not rejected, and the filter never rejects `..`, absolute names, or link targets. `strings.HasPrefix` is not a path check (`./…`, `foo/../…`). Both extracts trust that filter alone (lines 351 and 577). The post-extract check used for the OCI copy is not applied to the tar extract.\n\n**6. CWE-459 (checkpoint mount leaked on error)**  \nFile: `container_checkpoint_linux.go`, line 308  \n`if err := mount.All(mounts, mountPoint); err != nil {`  \n`mount.UnmountAll` is only on the OCI success path (line 543). Any failure after a successful `mount.All` (metadata read, pull, `createContainer`, `CopyDir`, and so on) returns with the snapshot still mounted. The `defer` `os.RemoveAll` (line 271) cannot remove a busy mount, and `s.View` is never removed. Checkpoint contents (including process memory) can remain mounted under the temp dir.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

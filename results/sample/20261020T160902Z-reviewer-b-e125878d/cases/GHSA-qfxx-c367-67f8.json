@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-qfxx-c367-67f8",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports a PowerShell command injection (line 650) and a zip bomb DoS (lines 195, 358). Neither is the symlink target validation / Zip Slip issue. It does not claim that the symlink creation at line 192 lacks containment checks, so the patched vulnerability is not reported.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review reports a PowerShell command injection (line 650) and a zip bomb DoS (lines 195, 358). Neither is the symlink target validation / Zip Slip issue. It does not claim that the symlink creation at line 192 lacks containment checks, so the patched vulnerability is not reported.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.734,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 130,
+          "prompt_tokens": 12052,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 12182
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 127.978,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 13204,
+        "completion_tokens_details": {
+          "reasoning_tokens": 12725
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 9164,
+        "total_tokens": 22368
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Command Injection (PowerShell Injection)\n**File:** `zip.ts`\n**Line:** 650\n**Vulnerability Class:** Command Injection\n\nWhen extracting a zip file on a Windows host using the system unzip fallback, the code passes arguments to `powershell.exe` using the `-command` flag. PowerShell's `-command` parameter concatenates all subsequent arguments with spaces and evaluates the resulting string as a PowerShell script. Because `zipFilePath` and `destDir` are passed directly into this array without sanitization or quoting, an attacker who controls the name of the zip file or the destination path can inject arbitrary PowerShell commands. For example, a filename like `archive.zip; calc.exe` would result in the execution of `calc.exe`.\n\n```typescript\n   650      await exec(executablePath, [\n   651        '-command',\n   652        'Expand-Archive',\n   653        '-LiteralPath',\n   654        zipFilePath,\n   655        '-DestinationPath',\n   656        destDir,\n   657        '-Force',\n   658      ]);\n```\n\n### 2. Denial of Service (Zip Bomb / Disk Exhaustion)\n**File:** `zip.ts`\n**Line:** 195\n**Vulnerability Class:** Denial of Service (DoS)\n\nWhen extracting files from the zip archive, the application pipes the read stream directly into a file write stream without tracking or limiting the uncompressed size of the extracted files. An attacker can provide a maliciously crafted, highly compressed zip file (a \"Zip Bomb\") that expands to an enormous size, exhausting the host's disk space and causing a Denial of Service. \n\n```typescript\n   195        await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));\n```\n\n*(Note: The same vulnerability is also present in the `_extractEntryTo` function at line 358)*\n**Line:** 358\n```typescript\n   358    await pipeline(readStream, createWriteStream(dstPath, {flags: 'w'}));\n```",
+    "status": "scored"
+  },
+  "guard_class": "symlink-toctou-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 188,
+            "start": 188
+          }
+        ],
+        "rationale": "Finding 1 identifies that the symlink target (`link`) read from the archive is passed to `fs.symlink` at line 188 with no check that it stays inside the destination directory. It describes the resulting symlink Zip Slip escape, which is the same missing guard and weakness as the known vulnerability.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":188,\"end\":188}],\"rationale\":\"Finding 1 identifies that the symlink target (`link`) read from the archive is passed to `fs.symlink` at line 188 with no check that it stays inside the destination directory. It describes the resulting symlink Zip Slip escape, which is the same missing guard and weakness as the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.44,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 139,
+          "prompt_tokens": 11240,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 11379
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 91.679,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 9610,
+        "completion_tokens_details": {
+          "reasoning_tokens": 8968
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 8105,
+        "total_tokens": 17715
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Arbitrary File Write / Path Traversal (Zip Slip via Symlinks)\n- **File:** `zip.ts`\n- **Line:** 188\n- **Vulnerability Class:** Arbitrary File Write / Path Traversal\n- **Quote:** `await fs.symlink(link, dest);`\n- **Description:** The extraction logic does not validate the target path of symlinks (`link`) extracted from the archive. An attacker can craft a malicious ZIP file containing a symlink that points outside the intended destination directory (e.g., `../../../../etc/`). If a subsequent file in the same archive is extracted to a path traversing through this symlink, `fs.createWriteStream` will follow the symlink and write the file to an arbitrary location on the filesystem, leading to a Zip Slip vulnerability.\n\n### 2. Command Injection\n- **File:** `zip.ts`\n- **Line:** 578\n- **Vulnerability Class:** Command Injection\n- **Quote:** `await exec(executablePath, [`\n- **Description:** When falling back to the system unzip utility on Windows, the code invokes `powershell.exe` using the `-command` flag. PowerShell's `-command` parameter concatenates all subsequent arguments into a single string and evaluates it as a script. Even though Node.js `spawn` (used under the hood by `teen_process.exec`) wraps arguments containing spaces in double quotes, PowerShell interpolates subexpressions (like `$(...)`) inside double quotes. If an attacker can control the `zipFilePath` or `destDir` (e.g., `C:\\path\\to\\$(calc).zip`), they can achieve arbitrary command execution.\n\n### 3. Denial of Service (Zip Bomb / Resource Exhaustion)\n- **File:** `zip.ts`\n- **Line:** 190\n- **Vulnerability Class:** Denial of Service (Resource Exhaustion)\n- **Quote:** `await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));`\n- **Description:** The extraction process pipes the uncompressed file stream directly to the filesystem without enforcing any limits on the uncompressed size or the number of bytes written. An attacker can provide a highly compressed malicious archive (a \"Zip Bomb\") that expands to an enormous size, exhausting the host's disk space and causing a Denial of Service.\n\n### 4. Denial of Service (Zip Bomb / Resource Exhaustion)\n- **File:** `zip.ts`\n- **Line:** 286\n- **Vulnerability Class:** Denial of Service (Resource Exhaustion)\n- **Quote:** `await pipeline(readStream, createWriteStream(dstPath, {flags: 'w'}));`\n- **Description:** Similar to the finding above, the `_extractEntryTo` function extracts individual ZIP entries directly to the filesystem without validating or limiting the uncompressed size of the stream, leaving it vulnerable to Zip Bomb attacks.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

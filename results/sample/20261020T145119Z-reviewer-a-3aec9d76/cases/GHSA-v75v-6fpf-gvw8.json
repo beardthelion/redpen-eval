@@ -1,0 +1,143 @@
+{
+  "case_id": "GHSA-v75v-6fpf-gvw8",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review explicitly says the status message is escaped via html.EscapeString on line 186 and finds no XSS. Its three findings (broken access control, CSRF, clickjacking) are unrelated to the reflected XSS that was fixed, so it does not claim the patched vulnerability is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review explicitly says the status message is escaped via html.EscapeString on line 186 and finds no XSS. Its three findings (broken access control, CSRF, clickjacking) are unrelated to the reflected XSS that was fixed, so it does not claim the patched vulnerability is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.124,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 127,
+          "prompt_tokens": 5051,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5178
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 53.512,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4231,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 3719,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 314340000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3888,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3888
+        },
+        "total_tokens": 8119
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has three security vulnerabilities. The state-changing transaction actions are reachable with only debugging access, and the forms that trigger them provide no CSRF protection.\n\n**1. Broken access control (CWE-285)**\nFile: `twopcz.go`, line 135\n```\nif err := acl.CheckAccessHTTP(r, acl.DEBUGGING); err != nil {\n```\nCommit, rollback, discard, and conclude all run after this single `acl.DEBUGGING` check (lines 142–148). Those calls change prepared and distributed transactions. The handler itself warns that they can jeopardize data integrity (line 184), but the code never requires a stricter admin role.\n\n**2. Cross-site request forgery (CWE-352)**\nFile: `twopcz.go`, lines 140–141\n```\ndtid := r.FormValue(\"dtid\")\naction := r.FormValue(\"Action\")\n```\n`FormValue` accepts query parameters and the body, and the handler never checks `r.Method` or a CSRF token before calling `RollbackPrepared`, `CommitPrepared`, or `ConcludeTransaction`. The forms that submit those actions also omit `method` (so they default to GET) and any anti-CSRF token:\n\nFile: `twopcz.go`, lines 81–83\n```\n<form>\n    <input type=\"hidden\" name=\"dtid\" value=\"{{.Dtid}}\"></input>\n    <input type=\"submit\" name=\"Action\" value=\"Discard\"></input>\n```\nThe same pattern appears at lines 102–105 (Rollback/Commit) and 126–128 (Conclude). A browser that already satisfies the ACL can be made to trigger those actions. Mutation also happens before the `format` branch, so a JSON GET performs the same state change.\n\n**3. Clickjacking (CWE-1021)**\nFile: `twopcz.go`, line 183\n```\nw.Write(gridTable)\n```\nThe HTML response is written with no `X-Frame-Options` or `Content-Security-Policy: frame-ancestors`. Combined with the one-click commit, rollback, and conclude forms above, the page can be framed and the buttons activated by a click on a decoy UI.\n\nThe template output and the status string are escaped (`safehtml/template`, `html.EscapeString` on line 186), so no XSS was found in this file.",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 185,
+            "start": 185
+          },
+          {
+            "end": 152,
+            "start": 152
+          },
+          {
+            "end": 154,
+            "start": 154
+          },
+          {
+            "end": 182,
+            "start": 182
+          }
+        ],
+        "rationale": "The first finding describes the known bug: `msg` is built from the request's Action and dtid values and written unescaped to the HTML response with `fmt.Fprintln(w, msg)`. That is reflected XSS at the same location and with the same missing escaping guard.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":185,\"end\":185},{\"start\":152,\"end\":152},{\"start\":154,\"end\":154},{\"start\":182,\"end\":182}],\"rationale\":\"The first finding describes the known bug: `msg` is built from the request's Action and dtid values and written unescaped to the HTML response with `fmt.Fprintln(w, msg)`. That is reflected XSS at the same location and with the same missing escaping guard.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.438,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 158,
+          "prompt_tokens": 5028,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5186
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 72.432,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 5648,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 5153,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 399080000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3874,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3874
+        },
+        "total_tokens": 9522
+      }
+    },
+    "review_error": null,
+    "review_text": "**twopcz.go:185 — Reflected XSS (CWE-79).** `fmt.Fprintln(w, msg)` writes `msg` into an HTML response with no escaping. `msg` is built from request data at lines 152 and 154 (`r.FormValue(\"Action\")` and `dtid`). `Action` is echoed even when it is not one of the switch cases, and `dtid` is attacker-controlled. The `safehtml` templates do not cover this path. HTML starts at line 182, so a debugging user who opens a crafted URL executes the payload.\n\n**twopcz.go:141 — CSRF / state change via GET (CWE-352).** The handler applies `Discard`, `Rollback`, `Commit`, and `Conclude` from `r.FormValue` with no CSRF token, no `Origin` check, and no `r.Method` restriction. `FormValue` honors query parameters, so a GET is enough. The forms at lines 80, 101, and 125 omit `method`, so they default to GET and send no token (`<td><form>`). A site that can cause a browser to request this URL can commit, roll back, or conclude a transaction for an already-authenticated debugging user. Basic auth is resent automatically on same-origin requests.\n\n**twopcz.go:134 — Weak authorization for integrity-critical actions (CWE-285).** `acl.CheckAccessHTTP(r, acl.DEBUGGING)` is the only gate, and it covers both the read view and the mutations at lines 143–147. Those calls (`RollbackPrepared`, `CommitPrepared`, `ConcludeTransaction`) can change transaction outcomes; the page itself warns they can jeopardize data integrity. Debug-level access is broader than what these actions need.\n\n**twopcz.go:159 — Sensitive error disclosure (CWE-209).** `http.Error(w, err.Error(), http.StatusInternalServerError)` returns raw internal errors to the client (same pattern at line 174, and again inside `msg` at line 152).\n\nThe `safehtml/template` row templates (lines 75–85, 96–107, 119–130) contextually escape `.Dtid`, `.Queries`, and the other fields; those writes are not XSS. Static fragments (`gridTable`, headers) are constants.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "case_id": "GHSA-fmxq-cgp8-87wp",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability was the missing AppProject destination-namespace and group/kind enforcement when executeHooks creates hook resources. The patched code now calls validateSyncPermissions at lines 162-164. The review does not claim that creation is unchecked. Its findings are about deletion of live hooks (lines 244 and 321), which is a different issue from the fixed one. So it does not report the patched vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability was the missing AppProject destination-namespace and group/kind enforcement when executeHooks creates hook resources. The patched code now calls validateSyncPermissions at lines 162-164. The review does not claim that creation is unchecked. Its findings are about deletion of live hooks (lines 244 and 321), which is a different issue from the fixed one. So it does not report the patched vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.034,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 167,
+          "prompt_tokens": 7264,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7431
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 96.284,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 12665,
+        "completion_tokens_details": {
+          "reasoning_tokens": 12135
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 4300,
+        "total_tokens": 16965
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### Finding 1\n**File:** hook.go\n**Line:** 244\n**Vulnerability Class:** Improper Authorization / Privilege Escalation (Insecure Direct Object Reference)\n\n**Description:**\nIn the `executeHooks` function, the controller iterates over `runningHooks` (which are populated directly from `liveObjs`) and deletes hooks that are in a degraded state. However, it does not verify whether the application actually owns or has the appropriate permissions to manage these resources (e.g., by checking `validateSyncPermissions` or ensuring the object has the correct application tracking label). \n\nIn Argo CD, `liveObjs` can include resources that exist in the cluster and match the GVK/Name/Namespace of objects defined in the Git manifests, even if they do not belong to the application. An attacker can exploit this by adding a manifest to their Git repository that matches the details of an existing hook belonging to another application or the system. If that hook is in a degraded state, Argo CD will delete it using the destination cluster's credentials, allowing the attacker to bypass AppProject restrictions and delete resources outside their authorized scope.\n\n**Quote:**\n```go\n\t\t\terr = ctrl.kubectl.DeleteResource(context.Background(), config, obj.GroupVersionKind(), obj.GetName(), obj.GetNamespace(), metav1.DeleteOptions{})\n```\n\n### Finding 2\n**File:** hook.go\n**Line:** 321\n**Vulnerability Class:** Improper Authorization / Privilege Escalation (Insecure Direct Object Reference)\n\n**Description:**\nSimilar to Finding 1, the `cleanupHooks` function iterates over `liveObjs` and deletes hooks based on their deletion policies (or lack thereof). It completely lacks authorization checks to ensure the application is permitted to delete the target resource. \n\nBecause an attacker can force arbitrary cluster resources (that possess the `argocd.argoproj.io/hook` annotation) into the `liveObjs` map by simply referencing them in their Git repository, they can trigger this cleanup routine. If the victim hook has no delete policy, or if its state matches the policy, Argo CD will delete it. This allows an attacker to reliably delete arbitrary hooks across the cluster, completely bypassing AppProject boundary restrictions.\n\n**Quote:**\n```go\n\t\t\terr = ctrl.kubectl.DeleteResource(context.Background(), config, obj.GroupVersionKind(), obj.GetName(), obj.GetNamespace(), metav1.DeleteOptions{})\n```",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 157,
+            "start": 157
+          },
+          {
+            "end": 135,
+            "start": 133
+          }
+        ],
+        "rationale": "Finding 1 says executeHooks creates PreDelete/PostDelete hooks from Git without checking AppProject destination namespace or group/kind restrictions. This is the same missing auth-check guard and the same weakness. It cites the CreateResource call at line 157 and the namespace handling at lines 133-135.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":157,\"end\":157},{\"start\":133,\"end\":135}],\"rationale\":\"Finding 1 says executeHooks creates PreDelete/PostDelete hooks from Git without checking AppProject destination namespace or group/kind restrictions. This is the same missing auth-check guard and the same weakness. It cites the CreateResource call at line 157 and the namespace handling at lines 133-135.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.78,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 155,
+          "prompt_tokens": 5880,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 6035
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 51.97,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 4982,
+        "completion_tokens_details": {
+          "reasoning_tokens": 4685
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 3507,
+        "total_tokens": 8489
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1\n- **File:** hook.go\n- **Line:** 157\n- **Vulnerability Class:** Improper Authorization / Privilege Escalation\n- **Quote:** `_, err = ctrl.kubectl.CreateResource(context.Background(), config, obj.GroupVersionKind(), obj.GetName(), obj.GetNamespace(), obj, metav1.CreateOptions{})`\n- **Description:** The `executeHooks` function creates pre-delete and post-delete hook resources parsed directly from the Git repository without verifying if the resource's Group, Kind, and Namespace are permitted by the Application's `AppProject` policies (e.g., `proj.Spec.Destinations`, `proj.Spec.ClusterResourceWhitelist`, or `proj.Spec.NamespaceResourceWhitelist`). \n\n  Because the namespace can be explicitly set in the Git manifest (and is preserved at lines 133-135), a malicious user with permission to modify the Git repository and delete the Application can define a hook (such as a privileged Pod, RoleBinding, or ClusterRole) targeting an unauthorized namespace like `kube-system`. When the Application is deleted, Argo CD will blindly create this resource, bypassing project restrictions and leading to cluster-wide privilege escalation. *(Note: This matches the behavior described in Argo CD CVE-2024-31989).*",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

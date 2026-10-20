@@ -1,0 +1,147 @@
+{
+  "case_id": "GHSA-qfxx-c367-67f8",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The fixed vulnerability is a missing symlink-target containment check in JS extraction. The patched code has that check at lines 184-192 (resolve against realDestDir, then isContainedPath, then symlink). The review does not claim the check is missing. Finding 6 (lines 186-192) argues the check is weak because it is lexical and does not canonicalize intermediate components, which is a bypass claim, not the original missing-validation claim. This is a weaker residual-risk claim, not the original vulnerability. Finding 2 targets system unzip, which is separate and outside the JS extraction path. The other findings are unrelated. I conclude the review did not report the patched vulnerability as still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The fixed vulnerability is a missing symlink-target containment check in JS extraction. The patched code has that check at lines 184-192 (resolve against realDestDir, then isContainedPath, then symlink). The review does not claim the check is missing. Finding 6 (lines 186-192) argues the check is weak because it is lexical and does not canonicalize intermediate components, which is a bypass claim, not the original missing-validation claim. This is a weaker residual-risk claim, not the original vulnerability. Finding 2 targets system unzip, which is separate and outside the JS extraction path. The other findings are unrelated. I conclude the review did not report the patched vulnerability as still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.536,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 255,
+          "prompt_tokens": 13260,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 13515
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 354.072,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 26540,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 25190,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1759180000,
+        "num_sources_used": 0,
+        "prompt_tokens": 9203,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 9203
+        },
+        "total_tokens": 35743
+      }
+    },
+    "review_error": null,
+    "review_text": "File: zip.ts\n\n**1. CWE-78 (OS command injection) — line 650**\n`await exec(executablePath, [`\nOn Windows, `zipFilePath` and `destDir` are appended to `powershell.exe -command` and evaluated as PowerShell, not as literal `-LiteralPath` values. Metacharacters in either path (`;`, `&`, `$()`, quotes) are executed. Node’s argv quoting does not neutralize PowerShell syntax.\n\n```\n   650|      await exec(executablePath, [\n   651|        '-command',\n   652|        'Expand-Archive',\n   653|        '-LiteralPath',\n   654|        zipFilePath,\n   655|        '-DestinationPath',\n   656|        destDir,\n   657|        '-Force',\n   658|      ]);\n```\n\n**2. CWE-22 / CWE-59 (zip slip / symlink escape) — line 315**\n`useSystemUnzip` skips the JS containment and symlink checks and returns on success. Info-ZIP `unzip -o` extracts symlink entries and then writes later entries through them, so a crafted archive can create or overwrite files outside `destDir`. A partial unzip that then falls back to JS can also leave those symlinks behind.\n\n```\n   315|        await extractWithSystemUnzip(zipFilePath, dir);\n   316|        return;\n```\n```\n   663|      await exec(executablePath, ['-q', '-o', zipFilePath, '-d', destDir]);\n```\n\n**3. CWE-88 (argument injection) — line 663**\n`zipFilePath` is passed as an unzip argument with no `--` end-of-options marker. A path whose first character is `-` (for example `-P` or `-d`) is parsed as a flag and can change the extract directory or which argument is the archive.\n\n```\n   663|      await exec(executablePath, ['-q', '-o', zipFilePath, '-d', destDir]);\n```\n\n**4. CWE-59 (symlink following on extract) — line 312**\n`destDir` is canonicalized with `realpath` and that result is trusted as the extract root. If any component of `destDir` is a symlink, extraction (JS and system unzip) writes into the symlink target, not the path the caller checked.\n\n```\n   311|    await fs.mkdir(destDir, {recursive: true});\n   312|    const dir = await fs.realpath(destDir);\n```\n\n**5. CWE-22 / CWE-59 (path traversal) — line 344**\n`_extractEntryTo` (used by `readEntries`) only does a lexical `isContainedPath` check. `mkdirp` and `createWriteStream` follow directory symlinks, so an entry such as `link/file` escapes when `link` already points outside `destDir`. Symlink entries are not rejected, and there is no `realpath` walk (unlike `ZipExtractor`).\n\n```\n   344|    const dstPath = path.resolve(destDir, fileName);\n   345|    if (!isContainedPath(dstPath, destDir)) {\n```\n```\n   355|    await fs.mkdirp(path.dirname(dstPath));\n   358|    await pipeline(readStream, createWriteStream(dstPath, {flags: 'w'}));\n```\n\n**6. CWE-59 (symlink target not canonicalized) — line 186**\nSymlink targets are checked with `path.resolve` only. A relative target that stays inside the root lexically is accepted even when an intermediate component is a symlink to outside, and the raw `link` string is what gets stored.\n\n```\n   186|        const resolvedLink = path.resolve(realDestDir, link);\n   187|        if (!isContainedPath(resolvedLink, dir)) {\n   192|        await fs.symlink(link, dest);\n```\n\n**7. CWE-367 (TOCTOU) — line 253**\nContainment is checked with `realpath`, then the file is opened by path. A directory component swapped for a symlink between the check and `createWriteStream` is followed. The open does not use `O_NOFOLLOW` / an fd under the verified directory.\n\n```\n   253|        realDest = await fs.realpath(dest);\n   195|        await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));\n```\n\n**8. CWE-409 (zip bomb) — line 195**\nExtraction never caps entry count, uncompressed size, or compression ratio (`uncompressedSize` is ignored). A small archive can fill disk or memory; symlink payloads are also read fully via `text(readStream)`.\n\n```\n   183|      const readStream = await this.openReadStream(entry);\n   185|        const link = await text(readStream);\n   195|        await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));\n```\n\n**9. CWE-732 (untrusted archive modes) — line 171**\nNon-zero external attributes are kept (masked only to `0o777`), so an archive can create world-writable or executable files. System `unzip` is worse: as root it can restore setuid bits, which this mask would have stripped.\n\n```\n   171|      const procMode = this.getExtractedMode(mode, isDir) & 0o777;\n   195|        await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));\n```\n\n**10. CWE-426 (untrusted search path) — line 676**\n`unzip` and `powershell.exe` are resolved with `fs.which` and the first hit is memoized. A writable PATH entry can substitute either binary, and the PowerShell launch does not pin `System32` or pass `-NoProfile`.\n\n```\n   643|      executablePath = await getExecutablePath(isWindowsHost ? 'powershell.exe' : 'unzip');\n   676|      const fullPath = await fs.which(binaryName);\n```",
+    "status": "scored"
+  },
+  "guard_class": "symlink-toctou-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 188,
+            "start": 188
+          },
+          {
+            "end": 137,
+            "start": 137
+          },
+          {
+            "end": 190,
+            "start": 190
+          },
+          {
+            "end": 272,
+            "start": 272
+          },
+          {
+            "end": 286,
+            "start": 286
+          }
+        ],
+        "rationale": "Finding 2 flags that the symlink target at line 188 (`fs.symlink(link, dest)`) is not checked against the destination directory. It also notes that later writes follow the symlink and escape. This is the missing symlink-target validation described in the known vulnerability, so it matches. The finding cites lines 188, 137, 190, 272 and 286.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":188,\"end\":188},{\"start\":137,\"end\":137},{\"start\":190,\"end\":190},{\"start\":272,\"end\":272},{\"start\":286,\"end\":286}],\"rationale\":\"Finding 2 flags that the symlink target at line 188 (`fs.symlink(link, dest)`) is not checked against the destination directory. It also notes that later writes follow the symlink and escape. This is the missing symlink-target validation described in the known vulnerability, so it matches. The finding cites lines 188, 137, 190, 272 and 286.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.159,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 200,
+          "prompt_tokens": 11522,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 11722
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 228.4,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 18799,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 17935,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1276700000,
+        "num_sources_used": 0,
+        "prompt_tokens": 8302,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 8302
+        },
+        "total_tokens": 27101
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has several security vulnerabilities. Each is listed below with its file, line, class, and the quoted line.\n\n**1. OS command injection (CWE-78)**\n- File: `zip.ts`, line 579\n- Quote: `'-command',`\n- Related lines: 582 `zipFilePath,` and 584 `destDir,`\n\n`extractWithSystemUnzip` builds a `powershell.exe -command` invocation and places `zipFilePath` and `destDir` in that command text without quoting or encoding. On Windows, `-command` is re-parsed by PowerShell, so metacharacters in either path are executed as code. `fs.realpath` does not remove those characters.\n\n**2. Symlink path traversal / arbitrary file write (CWE-59, CWE-22)**\n- File: `zip.ts`, line 188\n- Quote: `await fs.symlink(link, dest);`\n- Related lines: 137 `if (!isSubPath(dest, dir)) {`, 190 `await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));`, 272 `const dstPath = path.resolve(destDir, fileName);`, and 286 `await pipeline(readStream, createWriteStream(dstPath, {flags: 'w'}));`\n\nThe symlink target from the archive is not checked against `destDir`. The containment checks use `path.join` and `path.resolve` and do not canonicalize with `realpath`, so later `mkdir` and write calls follow a symlink created by an earlier entry and can create or overwrite files outside the destination. `_extractEntryTo` has the same non-canonical check.\n\n**3. Zip Slip via system unzip (CWE-22)**\n- File: `zip.ts`, line 243\n- Quote: `await extractWithSystemUnzip(zipFilePath, dir);`\n- Related line: 591 `await exec(executablePath, ['-q', '-o', zipFilePath, '-d', destDir]);`\n\nWhen `useSystemUnzip` is set, extraction is handed to `unzip -o` or `Expand-Archive -Force` and the `isSubPath` guard is skipped. There is no post-extract check that every written path stays under `destDir`, and a failure still leaves whatever those tools already wrote. Both tools can extract `../` entries and symlinks outside the destination.\n\n**4. Argument injection (CWE-88)**\n- File: `zip.ts`, line 591\n- Quote: `await exec(executablePath, ['-q', '-o', zipFilePath, '-d', destDir]);`\n\n`zipFilePath` is not required to be absolute and is passed before `--`. A path that starts with `-` can be consumed as an `unzip` option rather than as the archive path.\n\n**5. Zip bomb / unbounded extraction (CWE-409, CWE-400)**\n- File: `zip.ts`, line 190\n- Quote: `await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));`\n- Related line: 286 `await pipeline(readStream, createWriteStream(dstPath, {flags: 'w'}));`\n\nNeither the JS extractor nor the system-unzip path limits the uncompressed size, the compression ratio, the entry count, or the path depth. `maxSize` applies only to `toInMemoryZip`. A small archive can fill the disk or exhaust inodes.\n\n**6. Archive-controlled permissions (CWE-732)**\n- File: `zip.ts`, line 173\n- Quote: `const procMode = this.getExtractedMode(mode, isDir) & 0o777;`\n- Related line: 190 `await pipeline(readStream, fs.createWriteStream(dest, {mode: procMode}));`\n\nThe Unix mode comes from the entry’s `externalFileAttributes`. `& 0o777` drops setuid and setgid, but the remaining mode is still attacker-controlled, so extracted files can be world-writable or executable.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

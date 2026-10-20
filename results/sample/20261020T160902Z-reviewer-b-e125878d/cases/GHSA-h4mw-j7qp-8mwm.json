@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-h4mw-j7qp-8mwm",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review flags the two-token form in extra_args (line 436), a different code path from the patched --resume/--session-id handling. It acknowledges that --resume and --session-id already use the equals form (lines 352-356), so it does not claim the fixed vulnerability is still present. This is a separate, hypothetical finding.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review flags the two-token form in extra_args (line 436), a different code path from the patched --resume/--session-id handling. It acknowledges that --resume and --session-id already use the equals form (lines 352-356), so it does not claim the fixed vulnerability is still present. This is a separate, hypothetical finding.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 1.992,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 133,
+          "prompt_tokens": 4802,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4935
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 78.062,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 8011,
+        "completion_tokens_details": {
+          "reasoning_tokens": 7679
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2963,
+        "total_tokens": 10974
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Findings\n\n**1. Argument Injection via `extra_args`**\n- **File:** `subprocess_cli.py`\n- **Line:** 436\n- **Vulnerability Class:** Argument Injection\n- **Quote:** `cmd.extend([f\"--{flag}\", str(value)])`\n\n**Description:**\nThe method uses the two-token form (`[\"--flag\", \"value\"]`) to append extra arguments for future CLI flags. As explicitly noted by the developer in the comments for `--resume` (lines 352-356), if a CLI flag accepts an *optional* value, passing a value that starts with a dash (`-`) in the two-token form causes many CLI parsers to treat the value as a separate, injected flag rather than the value for the intended flag. \n\nBecause `extra_args` is designed as a generic escape hatch for \"future CLI flags\", it is entirely possible that future flags will accept optional values (similar to `--resume`). If a developer uses `extra_args` to pass such a flag and the value is derived from untrusted input, an attacker could inject arbitrary CLI flags. \n\n**Recommendation:**\nTo ensure consistent security and prevent argument injection for any future flags, `extra_args` should use the equals form to strictly bind the value to the flag, just as was done for `--resume` and `--session-id`. \n\nChange line 436 to:\n```python\ncmd.append(f\"--{flag}={value}\")\n```",
+    "status": "scored"
+  },
+  "guard_class": "escaping-encoding",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports no vulnerabilities and says passing user-controlled values as separate list arguments is safe. It never identifies that a dash-leading value for --resume or --session-id (lines 352-356) can be parsed as a separate flag, so it does not describe the argument-injection issue.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review reports no vulnerabilities and says passing user-controlled values as separate list arguments is safe. It never identifies that a dash-leading value for --resume or --session-id (lines 352-356) can be parsed as a separate flag, so it does not describe the argument-injection issue.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.622,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 121,
+          "prompt_tokens": 4433,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4554
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 15.721,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 1372,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1251
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2854,
+        "total_tokens": 4226
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided code and found no security vulnerabilities. \n\nThe code safely constructs a command-line argument list (`list[str]`) to be executed as a subprocess. By building the command as a list of strings rather than a single concatenated string, it inherently protects against shell injection vulnerabilities (assuming the resulting list is passed to a function like `subprocess.run` or `subprocess.Popen` with `shell=False`, which is the default and standard practice in Python). All user-controlled inputs from `self._options` are safely appended as separate arguments or JSON-encoded strings.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

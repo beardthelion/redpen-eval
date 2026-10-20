@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-qx66-fv34-fjm8",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability was passing the raw parsed payload to the action instead of an allowlisted {data, context, method} object. The code now builds that object at lines 159-163 and 168-172, and the reviewer never claims otherwise. The closest findings, #2 (context merge) and #6 (deserialization without validation), concern the context merge and missing schema checks, not the raw-payload pass-through. They do not say that attacker-controlled keys flow into the action as a raw payload. The other findings cover unrelated issues such as error exposure, CSRF, and resource limits.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability was passing the raw parsed payload to the action instead of an allowlisted {data, context, method} object. The code now builds that object at lines 159-163 and 168-172, and the reviewer never claims otherwise. The closest findings, #2 (context merge) and #6 (deserialization without validation), concern the context merge and missing schema checks, not the raw-payload pass-through. They do not say that attacker-controlled keys flow into the action as a raw payload. The other findings cover unrelated issues such as error exposure, CSRF, and resource limits.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.139,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 218,
+          "prompt_tokens": 5059,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5277
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 142.131,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 10803,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 9676,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 694000000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3155,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3155
+        },
+        "total_tokens": 13958
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has several security vulnerabilities. Each finding is listed below.\n\n**1. Information exposure through error messages (CWE-209)**\nFile: `server-functions-handler.ts`, lines 213–220 and 227\n\n```213:220:server-functions-handler.ts\n      console.error('Server Fn Error!', error)\n\n      const serializedError = JSON.stringify(\n        await toCrossJSONAsync(error, {\n          refs: new Map(),\n          plugins: serovalPlugins,\n        }),\n      )\n```\n\nThe catch path serializes the full error, including its stack, cause, and any internal fields, and returns it to the client at line 227. That can leak filesystem paths, queries, and secrets carried on the error object.\n\n**2. Untrusted context merged into the trusted server context (CWE-915)**\nFile: `server-functions-handler.ts`, lines 135–138, 161, and 170\n\n```135:138:server-functions-handler.ts\n              params.context = safeObjectMerge(\n                deserializedContext as Record<string, unknown>,\n                context,\n              )\n```\n\n```161:161:server-functions-handler.ts\n          context: safeObjectMerge(payload?.context, context),\n```\n\nThe client-supplied context is deserialized and merged into the context object passed to the action. Even if `safeObjectMerge` blocks `__proto__`, any key the server context does not strictly override can be injected, including nested fields. If actions treat `context` as authoritative for identity or authorization, that is a privilege-escalation risk. Client data should stay in `data`, not in the trusted context.\n\n**3. Cross-site request forgery (CWE-352)**\nFile: `server-functions-handler.ts`, lines 85 and 97; invocations at 148, 159, and 168\n\n```85:85:server-functions-handler.ts\n    if (action.method && methodUpper !== action.method) {\n```\n\n```97:97:server-functions-handler.ts\n    const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'\n```\n\nThere is no Origin, Referer, or CSRF-token check before `action(...)` runs. The `x-tsr-serverFn` header is only used to shape the response, and it is not required. If `action.method` is unset, the method check is skipped, so a state-changing function can be triggered with a cookie-authenticated cross-site GET or form POST.\n\n**4. Uncontrolled resource consumption (CWE-400)**\nFile: `server-functions-handler.ts`, lines 119 and 165–166 (contrast with 152–154)\n\n```152:154:server-functions-handler.ts\n        if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {\n          throw new Error('Payload too large')\n        }\n```\n\n```165:166:server-functions-handler.ts\n        const payload: any = contentType?.includes('application/json')\n          ? fromJSON(await request.json(), { plugins: serovalPlugins })\n```\n\nGET enforces `MAX_PAYLOAD_SIZE`, but the FormData path at line 119 and the JSON path at line 166 parse the body with no size or depth limit. A large or deeply nested body can exhaust memory or CPU before the action runs.\n\n**5. Sensitive data in the query string (CWE-598)**\nFile: `server-functions-handler.ts`, line 151\n\n```151:151:server-functions-handler.ts\n        const payloadParam = url.searchParams.get('payload')\n```\n\nThe GET payload, including `data` and `context`, is taken from the query string. URLs are written to access logs, proxy logs, and `Referer` headers. Nothing in this handler sets `Cache-Control: no-store`, so caches may also store the response for that URL.\n\n**6. Deserialization of untrusted data without validation (CWE-502 / CWE-20)**\nFile: `server-functions-handler.ts`, lines 130–133, 157, and 166\n\n```130:133:server-functions-handler.ts\n            const parsedContext = JSON.parse(serializedContext)\n            const deserializedContext = fromJSON(parsedContext, {\n              plugins: serovalPlugins,\n            })\n```\n\nRequest JSON and FormData context are passed through `JSON.parse` and `fromJSON` with server plugins, then handed to the action with no schema or type check. The impact depends on the plugins, but unexpected revived types still reach the action.\n\n**7. Not-found response reflects error internals and headers (CWE-209 / CWE-113)**\nFile: `server-functions-handler.ts`, lines 528–531\n\n```528:531:server-functions-handler.ts\n    const { headers, ...rest } = error\n    const response = new Response(JSON.stringify(rest), {\n      status: 404,\n      headers,\n    })\n```\n\nEvery property except `headers` is JSON-encoded into the body, and `error.headers` is applied to the response as-is. Internal fields on the not-found object are disclosed, and header values taken from that object are not allowlisted.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The known vulnerability is that the raw parsed payload object is passed to the action instead of an allowlisted {data, context, method} object, so attacker-controlled keys flow into the server function. Finding 3 comes closest. It discusses client-controlled context injection and notes there is no allowlist of client context keys, but it is about the context field and deserialization, not about the raw payload being passed to action(). It never says that arbitrary top-level payload keys reach the action or can be reflected in the response. The other findings cover error disclosure, DoS, CSRF, URL secrets and header injection, which are unrelated.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The known vulnerability is that the raw parsed payload object is passed to the action instead of an allowlisted {data, context, method} object, so attacker-controlled keys flow into the server function. Finding 3 comes closest. It discusses client-controlled context injection and notes there is no allowlist of client context keys, but it is about the context field and deserialization, not about the raw payload being passed to action(). It never says that arbitrary top-level payload keys reach the action or can be reflected in the response. The other findings cover error disclosure, DoS, CSRF, URL secrets and header injection, which are unrelated.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.623,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 224,
+          "prompt_tokens": 5378,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5602
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 134.325,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 10725,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 9410,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 688100000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3094,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3094
+        },
+        "total_tokens": 13819
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has several security vulnerabilities. Each finding is listed below.\n\n**1. Information disclosure (CWE-209)**\nFile: `server-functions-handler.ts`, lines 206–221\n\n```206:221:server-functions-handler.ts\n      const serializedError = JSON.stringify(\n        await toCrossJSONAsync(error, {\n          refs: new Map(),\n          plugins: serovalPlugins,\n        }),\n      )\n      const response = getResponse()\n      const headers = {\n        'Content-Type': 'application/json',\n        [X_TSS_SERIALIZED]: 'true',\n      }\n      try {\n        return new Response(serializedError, {\n          status: response.status ?? 500,\n          statusText: response.statusText,\n          headers,\n        })\n```\n\nUnhandled exceptions are fully serialized with `toCrossJSONAsync` and returned to the client. That can expose stack traces, internal paths, and secrets carried on the error (for example `cause`, request config, or auth headers). `response.status ?? 500` also keeps a non-500 status when one is already set, so a sensitive error body can be cached or treated as success. No `Cache-Control: no-store` is set.\n\n**2. Unbounded request body / denial of service (CWE-770)**\nFile: `server-functions-handler.ts`, lines 119 and 164\n\n```119:119:server-functions-handler.ts\n        const formData = await request.formData()\n```\n\n```164:164:server-functions-handler.ts\n          ? fromJSON(await request.json(), { plugins: serovalPlugins })\n```\n\nGET payloads are capped at line 153 (`payloadParam.length > MAX_PAYLOAD_SIZE`). FormData and JSON bodies are not. A client can force large allocations and expensive `fromJSON` work. Nesting depth is also unchecked on the GET path, so a size cap alone does not stop a JSON bomb.\n\n**3. Client-controlled context injection (CWE-915), via unsafe deserialization (CWE-502)**\nFile: `server-functions-handler.ts`, lines 130–138, 157–159, and 164–166\n\n```130:138:server-functions-handler.ts\n            const parsedContext = JSON.parse(serializedContext)\n            const deserializedContext = fromJSON(parsedContext, {\n              plugins: serovalPlugins,\n            })\n            if (typeof deserializedContext === 'object' && deserializedContext) {\n              params.context = safeObjectMerge(\n                deserializedContext as Record<string, unknown>,\n                context,\n              )\n```\n\n```157:159:server-functions-handler.ts\n          ? fromJSON(JSON.parse(payloadParam), { plugins: serovalPlugins })\n          : {}\n        payload.context = safeObjectMerge(payload.context, context)\n```\n\n```164:166:server-functions-handler.ts\n          ? fromJSON(await request.json(), { plugins: serovalPlugins })\n          : {}\n        payload.context = safeObjectMerge(payload.context, context)\n```\n\nAttacker-controlled FormData (`TSS_FORMDATA_CONTEXT`), query `payload`, and JSON bodies are parsed and revived with `fromJSON`, then merged into the trusted server `context` passed to `action`. A prototype-safe merge still keeps client-only keys. If handlers or middleware trust context fields such as identity or role, that is privilege escalation. Plugins that revive non-plain objects make the same boundary an unsafe-deserialization sink. There is no allowlist of client context keys.\n\n**4. Cross-site request forgery (CWE-352)**\nFile: `server-functions-handler.ts`, lines 85 and 149–161\n\n```85:85:server-functions-handler.ts\n    if (action.method && methodUpper !== action.method) {\n```\n\n```149:161:server-functions-handler.ts\n      } else if (methodUpper === 'GET') {\n        // Get payload directly from searchParams\n        const payloadParam = url.searchParams.get('payload')\n        // Reject oversized payloads to prevent DoS\n        if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {\n          throw new Error('Payload too large')\n        }\n        const payload: any = payloadParam\n          ? fromJSON(JSON.parse(payloadParam), { plugins: serovalPlugins })\n          : {}\n        payload.context = safeObjectMerge(payload.context, context)\n        payload.method = methodUpper\n        res = await action(payload)\n```\n\nMethod enforcement is skipped when `action.method` is unset, and GET still runs the action with a query payload. There is no Origin, `Sec-Fetch-Site`, or CSRF-token check. Cookie-authenticated functions can be triggered cross-site; SameSite=Lax cookies are still sent on cross-site top-level GET.\n\n**5. Sensitive data in URLs (CWE-598)**\nFile: `server-functions-handler.ts`, line 151\n\n```151:151:server-functions-handler.ts\n        const payloadParam = url.searchParams.get('payload')\n```\n\nGET arguments live in the query string, so they end up in access logs, browser history, and `Referer` headers. Payloads that include tokens or other secrets are exposed.\n\n**6. Unsanitized header spread (CWE-113)**\nFile: `server-functions-handler.ts`, lines 521–526\n\n```521:526:server-functions-handler.ts\n    return new Response(JSON.stringify(rest), {\n      status: 404,\n      headers: {\n        'Content-Type': 'application/json',\n        ...(headers || {}),\n      },\n    })\n```\n\n`error.headers` is copied onto the response with no allowlist or validation, and it can override `Content-Type`. Header names or values taken from a not-found object (including ones influenced by request data inside an action) can inject headers. `JSON.stringify` does not escape `<`, so a forced `text/html` content type is also an XSS risk. The rest of the error object is written into the 404 body.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

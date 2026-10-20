@@ -1,0 +1,135 @@
+{
+  "case_id": "GHSA-pw5q-rjx4-7f7p",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review acknowledges that the patched code blocks a non-admin from modifying or deleting a global admin target and from setting another user's password. Its findings are different concerns: a speculative fail-open when permissions or caller are missing from the context, and non-admins editing non-admin users' fields or deleting them. None of these claims that a delegated users:update or users:delete holder can still modify or delete a global admin, so none reports the patched privilege-ordering flaw as still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review acknowledges that the patched code blocks a non-admin from modifying or deleting a global admin target and from setting another user's password. Its findings are different concerns: a speculative fail-open when permissions or caller are missing from the context, and non-admins editing non-admin users' fields or deleting them. None of these claims that a delegated users:update or users:delete holder can still modify or delete a global admin, so none reports the patched privilege-ordering flaw as still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 6.914,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 709,
+          "prompt_tokens": 4342,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5051
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 37.843,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 3057,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 2493,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 229460000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3166,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3166
+        },
+        "total_tokens": 6223
+      }
+    },
+    "review_error": null,
+    "review_text": "**users.go:292–294, 307 — CWE-636 (fail-open) / CWE-862 (missing authorization).** Context errors are discarded, and the privilege block runs only when `callerPerms != nil`. A nil permission set skips the admin and password checks and is still passed into the update.\n\n```292:294:users.go\n\tcallerPerms, _ := humamw.PermissionsFromContext(ctx)\n\tcaller, _ := humamw.GetCurrentUserFromContext(ctx)\n\tif callerPerms != nil && !callerPerms.IsGlobalAdmin() {\n```\n\n```307:307:users.go\n\tupdatedUser, err := h.userService.UpdateUser(ctx, userModel, callerPerms)\n```\n\n**users.go:263–277, 294–305 — CWE-639 (IDOR) / CWE-862.** For a non-admin, nothing requires `caller.ID == userModel.ID` before username, email, display name, locale, or time format are copied onto the target. Only “set someone else’s password” and “target is global admin” are blocked, so a non-admin can change another non-admin’s email and take over the account via reset.\n\n```269:271:users.go\n\tif input.Body.Email != nil {\n\t\tuserModel.Email = input.Body.Email\n\t}\n```\n\n**users.go:295 — CWE-862.** The cross-user password denial also requires `caller != nil`. With permissions present but no caller identity, that branch does not run and another user’s password can still be set.\n\n```295:295:users.go\n\t\tif input.Body.Password != nil && *input.Body.Password != \"\" && caller != nil && caller.ID != userModel.ID {\n```\n\n**users.go:343–355 — CWE-636 / CWE-639.** Same discarded errors and nil fail-open on delete. The pre-check only stops a non-admin from deleting a global admin (and only when `caller != nil` and the IDs differ). Deleting any other user still proceeds.\n\n```343:345:users.go\n\tcallerPerms, _ := humamw.PermissionsFromContext(ctx)\n\tcaller, _ := humamw.GetCurrentUserFromContext(ctx)\n\tif callerPerms != nil && !callerPerms.IsGlobalAdmin() && caller != nil && caller.ID != input.UserID {\n```\n\n```355:355:users.go\n\tif err := h.userService.DeleteUser(ctx, input.UserID, callerPerms); err != nil {\n```",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 252,
+            "start": 252
+          },
+          {
+            "end": 319,
+            "start": 319
+          }
+        ],
+        "rationale": "Findings 1 and 3 report that UpdateUser and DeleteUser act on input.UserID with no caller-to-target authorization check. Finding 1 adds that password and email changes on another account amount to takeover. This matches the missing privilege-ordering check, where a holder of delegated update/delete permission can modify or delete an admin and reset its password. The review frames the guard as 'caller is that user or an admin' instead of privilege ordering, but the missing guard and the resulting weakness are the same. Finding 2 on the unverified password change is a separate issue, so its line 279 is not cited.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":252,\"end\":252},{\"start\":319,\"end\":319}],\"rationale\":\"Findings 1 and 3 report that UpdateUser and DeleteUser act on input.UserID with no caller-to-target authorization check. Finding 1 adds that password and email changes on another account amount to takeover. This matches the missing privilege-ordering check, where a holder of delegated update/delete permission can modify or delete an admin and reset its password. The review frames the guard as 'caller is that user or an admin' instead of privilege ordering, but the missing guard and the resulting weakness are the same. Finding 2 on the unverified password change is a separate issue, so its line 279 is not cited.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.008,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 245,
+          "prompt_tokens": 3024,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3269
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 18.825,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 1601,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 1309,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 128460000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2484,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2484
+        },
+        "total_tokens": 4085
+      }
+    },
+    "review_error": null,
+    "review_text": "The handlers contain three security vulnerabilities, all related to missing authorization and unverified credential changes.\n\n**1. Broken access control / IDOR (CWE-862, CWE-639)**\nFile: `users.go`, line 252\n```\nuserModel, err := h.userService.GetUserByID(ctx, input.UserID)\n```\n`UpdateUser` loads and then writes the user identified by `input.UserID` with no check that the caller is that user or an admin. Any authenticated caller who can hit this handler can change another account’s username, email, and password.\n\n**2. Unverified password change (CWE-620)**\nFile: `users.go`, line 279\n```\nif input.Body.Password != nil && *input.Body.Password != \"\" {\n```\nA new password is hashed and stored without verifying the current password or any other step-up authentication. Combined with the missing authorization check, this is an account takeover.\n\n**3. Broken access control / IDOR (CWE-862, CWE-639)**\nFile: `users.go`, line 319\n```\nif err := h.userService.DeleteUser(ctx, input.UserID); err != nil {\n```\n`DeleteUser` deletes `input.UserID` with no caller-to-target authorization check, so a caller can delete another user’s account.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

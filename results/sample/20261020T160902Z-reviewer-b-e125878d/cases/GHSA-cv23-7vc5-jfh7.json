@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-cv23-7vc5-jfh7",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says the code has no vulnerabilities and that the length checks (nLink < nPath and nLink > nPrefix) correctly prevent slice bounds panics. It does not claim the fixed slicing vulnerability is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says the code has no vulnerabilities and that the length checks (nLink < nPath and nLink > nPrefix) correctly prevent slice bounds panics. It does not claim the fixed slicing vulnerability is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 1.717,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 107,
+          "prompt_tokens": 1767,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 1874
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 512.237,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 63079,
+        "completion_tokens_details": {
+          "reasoning_tokens": 62910
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 495,
+        "total_tokens": 63574
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided code and found no security vulnerabilities.\n\nThe function `IsSafeURL` correctly validates URLs against a predefined list of safe paths and URI prefixes. It properly handles edge cases such as short URLs (preventing out-of-bounds panics, as noted in the comments) and ensures that the character immediately following a matched prefix is alphanumeric, which effectively prevents bypasses using non-alphanumeric characters (e.g., `javascript:` disguised as `http://javascript:alert(1)` or `http:javascript:alert(1)`). \n\nThe use of `bytes.ToLower` and `bytes.Equal` is safe in this context, and the length checks (`nLink < nPath` and `nLink > nPrefix`) are correctly implemented to prevent slice bounds out of range panics.",
+    "status": "scored"
+  },
+  "guard_class": "type-range-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 789,
+            "start": 789
+          }
+        ],
+        "rationale": "The review flags `url[:nPath]` at line 789, where nPath comes from len(path), taken before any length check. It correctly explains that a url shorter than nPath panics with slice bounds out of range, and it proposes moving the length guard ahead of the slice. This is the same missing less-than-length guard before slicing.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":789,\"end\":789}],\"rationale\":\"The review flags `url[:nPath]` at line 789, where nPath comes from len(path), taken before any length check. It correctly explains that a url shorter than nPath panics with slice bounds out of range, and it proposes moving the length guard ahead of the slice. This is the same missing less-than-length guard before slicing.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.302,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 143,
+          "prompt_tokens": 1829,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 1972
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 20.176,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 2187,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1938
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 414,
+        "total_tokens": 2601
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security vulnerability found in the provided code:\n\n- **File:** parser.go\n- **Line:** 789\n- **Vulnerability class:** Denial of Service (DoS) / Out-of-bounds Slice (Panic)\n- **Quote:** `linkPrefix := url[:nPath]`\n\n**Explanation:** \nThe code attempts to slice the `url` byte array up to `nPath` (the length of the current `path` being checked) *before* verifying that the `url` is actually long enough. If an attacker provides a `url` that is shorter than any of the paths in the `Paths` slice (i.e., `nLink < nPath`), the slicing operation `url[:nPath]` will trigger a runtime panic (`slice bounds out of range`). This can be exploited to crash the application, resulting in a Denial of Service (DoS). \n\nTo fix this, the length check should happen before the slice is created:\n```go\nif nLink >= nPath {\n    linkPrefix := url[:nPath]\n    if bytes.Equal(linkPrefix, path) {\n        // ...\n    }\n}\n```",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

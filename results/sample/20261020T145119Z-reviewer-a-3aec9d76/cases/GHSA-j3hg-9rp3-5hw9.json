@@ -1,0 +1,131 @@
+{
+  "case_id": "GHSA-j3hg-9rp3-5hw9",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says no vulnerabilities were found and affirms that the body size cap is enforced through io.LimitReader. It does not claim the missing-size-limit issue is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says no vulnerabilities were found and affirms that the body size cap is enforced through io.LimitReader. It does not claim the missing-size-limit issue is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.214,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 88,
+          "prompt_tokens": 2559,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2647
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 253.682,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 19288,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 19185,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1187700000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2385,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2385
+        },
+        "total_tokens": 21673
+      }
+    },
+    "review_error": null,
+    "review_text": "No vulnerabilities found in the provided code.\n\nThe per-request cap is enforced even when `Content-Length` is missing or understated: the copy is wrapped in `io.LimitReader`, and one extra byte is checked before the digest is returned. Oversized bodies are rejected and the temp file is removed. `os.CreateTemp` is used (exclusive create, `0600`), I/O stays on the open file descriptor, and sync/seek/close failures fail closed without returning a digest.",
+    "status": "scored"
+  },
+  "guard_class": "size-cap",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 46,
+            "start": 46
+          }
+        ],
+        "rationale": "Finding 1 flags the unbounded io.Copy of request.Body at line 46 and recommends http.MaxBytesReader or io.LimitReader. That is the same missing size-cap guard and the same resource-exhaustion weakness as the known vulnerability.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":46,\"end\":46}],\"rationale\":\"Finding 1 flags the unbounded io.Copy of request.Body at line 46 and recommends http.MaxBytesReader or io.LimitReader. That is the same missing size-cap guard and the same resource-exhaustion weakness as the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.223,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 128,
+          "prompt_tokens": 2293,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2421
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 39.273,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 2781,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 2535,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 189340000,
+        "num_sources_used": 0,
+        "prompt_tokens": 1988,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 1988
+        },
+        "total_tokens": 4769
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has two security vulnerabilities, both related to how the request body is staged to disk.\n\n**1. body.go:46 — Uncontrolled resource consumption (CWE-770)**\n```go\nsize, err := io.Copy(io.MultiWriter(temporary, digest), request.Body)\n```\n`io.Copy` reads `request.Body` with no size cap (`http.MaxBytesReader`, `io.LimitReader`, or a checked `ContentLength`). A caller can stream an arbitrarily large body, filling the temp filesystem and tying up the process until the copy fails.\n\n**2. body.go:36 — Sensitive data written to a shared temp directory (CWE-377 / CWE-312)**\n```go\ntemporary, err := os.CreateTemp(\"\", \"nginx-ui-node-request-body-*\")\n```\nThe full request body is written under `os.TempDir()` and, on the success path (line 65), is left there until something else closes and removes it. A crash or a missed cleanup leaves the body on disk; the `nginx-ui-node-request-body-*` name also makes those files easy to spot.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

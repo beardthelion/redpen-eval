@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-2cvf-wqm6-wr9g",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched code rejects images carrying the checkpoint annotation at lines 167-175. The review does not claim the checkpoint annotation check is missing. Its three findings concern the clone path: the Linux spec overwrite, the exclusive resource-limit switch, and nil dereferences. None of these is the checkpoint-image vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched code rejects images carrying the checkpoint annotation at lines 167-175. The review does not claim the checkpoint annotation check is missing. Its three findings concern the clone path: the Linux spec overwrite, the exclusive resource-limit switch, and nil dereferences. None of these is the checkpoint-image vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.684,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 143,
+          "prompt_tokens": 7243,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7386
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 138.633,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 9578,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 9208,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 665360000,
+        "num_sources_used": 0,
+        "prompt_tokens": 5398,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 5398
+        },
+        "total_tokens": 14976
+      }
+    },
+    "review_error": null,
+    "review_text": "The clone path has three security-relevant defects. No other issues in this function rise to a vulnerability on the code shown.\n\n**1. container_create.go:285 — Security-policy bypass (CWE-269)**  \nQuote: `err = json.Unmarshal(out, runtimeSpec.Linux)`  \nOn clone, the source container’s entire OCI Linux block replaces the spec just built by `SpecGenToOCI`. That overwrites namespaces, device nodes, sysctls, seccomp, and cgroup path with the source container’s values, so restrictions in the clone request are not what actually gets applied.\n\n**2. container_create.go:296 — Resource-limit bypass (CWE-670)**  \nQuote: `switch {`  \nOnly one of CPU, memory, block I/O, or device limits is copied (`case` is exclusive, and `Unified`, PIDs, and hugepage limits are never copied). After the Linux overwrite, a clone that sets more than one limit keeps the source container’s other limits. Device cgroup rules are the isolation-relevant case.\n\n**3. container_create.go:277 — Nil dereference / process crash (CWE-476)**  \nQuote: `resources := runtimeSpec.Linux.Resources`  \n`runtimeSpec.Linux` is used with no nil check. The same assumption is repeated at line 298: `runtimeSpec.Linux.Resources.CPU = s.ResourceLimits.CPU`. A nil `Linux` or `Resources` panics the caller. Line 290 has the same gap: `json.Unmarshal(marshalRes, runtimeSpec.Linux.Resources)` does not clear an existing `Resources` pointer when the marshaled value is null, so the source container’s limits remain and finding 2 applies on top of them.",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports three bugs in the clone path: the resource-limit switch, the Linux spec overwrite on clone, and nil dereferences. None of them mentions the missing rejection of images carrying the checkpoint annotation before the container is built. The ground-truth vulnerability is not described.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review reports three bugs in the clone path: the resource-limit switch, the Linux spec overwrite on clone, and nil dereferences. None of them mentions the missing rejection of images carrying the checkpoint annotation before the container is built. The ground-truth vulnerability is not described.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.652,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 123,
+          "prompt_tokens": 7132,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7255
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 159.583,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 10370,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 9913,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 709300000,
+        "num_sources_used": 0,
+        "prompt_tokens": 5219,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 5219
+        },
+        "total_tokens": 15589
+      }
+    },
+    "review_error": null,
+    "review_text": "The clone path has three security-relevant defects. The resource-limit bug is the clearest control bypass.\n\n**1. container_create.go:286 — security-control bypass (CWE-670)**  \n`switch {`  \nOnly the first non-nil branch runs, so a clone that sets more than one of CPU, memory, BlockIO, and device limits keeps just one. Device cgroup rules and memory caps are dropped when an earlier case matches. Quote: `case s.ResourceLimits.CPU != nil:` (line 287) then `runtimeSpec.Linux.Resources.CPU = s.ResourceLimits.CPU` (line 288); `Devices` is only reached at line 293 if the earlier cases are nil.\n\n**2. container_create.go:275 — isolation settings replaced on clone (CWE-1188)**  \n`err = json.Unmarshal(out, runtimeSpec.Linux)`  \nThis writes the source container’s whole Linux block over the spec just built for the new container. Namespaces (including join paths), devices, sysctls, masked/readonly paths, seccomp, and cgroup path come from the source. Caller-specified tightening is not preserved. `encoding/json` also leaves omitted fields in place, so the result can be a mix of old and new controls. The later resource restore does not cover those fields.\n\n**3. container_create.go:267 and :304 — nil deref / nil-map write (CWE-476, API DoS)**  \n`resources := runtimeSpec.Linux.Resources`  \nIf `runtimeSpec.Linux` is nil, this panics before any check.  \n`runtimeSpec.Annotations[define.InspectAnnotationLabel] = infraSpec.Annotations[define.InspectAnnotationLabel]`  \nA nil `Annotations` map reads as empty (`len(...) == 0` at line 303) and then panics on write. Same pattern at lines 307 and 310. A clone or pod-create request can crash the process.\n\nNo other issues in this function rose to a vulnerability. Authz for rootfs, host devices, and namespace choices is not done here; `s.Validate()` is assumed to enforce that.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-2cvf-wqm6-wr9g",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the missing checkpoint-annotation rejection in MakeContainer. The patched code now has that check at lines 167-175. The review does not claim the check is missing. It raises two unrelated issues: the switch logic in the clone resource-limits handling (lines 296-305) and a nil-pointer unmarshal (line 290). Neither concerns the checkpoint annotation.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the missing checkpoint-annotation rejection in MakeContainer. The patched code now has that check at lines 167-175. The review does not claim the check is missing. It raises two unrelated issues: the switch logic in the clone resource-limits handling (lines 296-305) and a nil-pointer unmarshal (line 290). Neither concerns the checkpoint annotation.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.408,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 162,
+          "prompt_tokens": 7592,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7754
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 179.53,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 18623,
+        "completion_tokens_details": {
+          "reasoning_tokens": 18018
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 4628,
+        "total_tokens": 23251
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Improper Resource Limitation (Logic Error)\n**File:** `container_create.go`\n**Line:** 296-305\n**Vulnerability Class:** Improper Resource Limitation / Security Feature Bypass\n\n**Description:**\nWhen cloning a container, the code attempts to apply new resource limits (overrides) from `s.ResourceLimits` to the cloned container's `runtimeSpec.Linux.Resources`. However, it uses a `switch` statement without an expression, which evaluates each case as a boolean and executes only the *first* true case. Because there are no `fallthrough` statements, if a user specifies multiple resource limits (e.g., both CPU and Memory limits), only the first one evaluated (CPU) will be applied, and the rest will be silently ignored. This logic error allows containers to bypass intended resource constraints, potentially leading to resource exhaustion and a Denial of Service (DoS) on the host.\n\n**Quote:**\n```go\n    296  \t\t\tswitch {\n    297  \t\t\tcase s.ResourceLimits.CPU != nil:\n    298  \t\t\t\truntimeSpec.Linux.Resources.CPU = s.ResourceLimits.CPU\n    299  \t\t\tcase s.ResourceLimits.Memory != nil:\n    300  \t\t\t\truntimeSpec.Linux.Resources.Memory = s.ResourceLimits.Memory\n    301  \t\t\tcase s.ResourceLimits.BlockIO != nil:\n    302  \t\t\t\truntimeSpec.Linux.Resources.BlockIO = s.ResourceLimits.BlockIO\n    303  \t\t\tcase s.ResourceLimits.Devices != nil:\n    304  \t\t\t\truntimeSpec.Linux.Resources.Devices = s.ResourceLimits.Devices\n    305  \t\t\t}\n```\n\n### 2. Denial of Service (Unhandled Nil Pointer in JSON Unmarshal)\n**File:** `container_create.go`\n**Line:** 290\n**Vulnerability Class:** Denial of Service (DoS)\n\n**Description:**\nDuring a container clone, the code marshals the new container's resources into `marshalRes` and then unmarshals them back into `runtimeSpec.Linux.Resources` to merge them with the old container's configuration. If neither the original container nor the new clone configuration has resource limits defined, `runtimeSpec.Linux.Resources` will be `nil`. Passing a typed `nil` pointer directly to `json.Unmarshal` results in an `InvalidUnmarshalError`. This causes the cloning process to fail entirely and reliably for any container without resource limits, leading to a Denial of Service for the clone functionality. \n\n**Quote:**\n```go\n    290  \t\t\terr = json.Unmarshal(marshalRes, runtimeSpec.Linux.Resources)\n```",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review's only finding is about a switch statement at lines 286-295 that applies just the first matching resource limit when cloning a container. It does not mention the missing check for the checkpoint annotation on images, nor the sandboxing that a checkpoint image would disable. That is a different bug from the known vulnerability.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review's only finding is about a switch statement at lines 286-295 that applies just the first matching resource limit when cloning a container. It does not mention the missing check for the checkpoint annotation on images, nor the sandboxing that a checkpoint image would disable. That is a different bug from the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.952,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 128,
+          "prompt_tokens": 6938,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7066
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 64.481,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6631,
+        "completion_tokens_details": {
+          "reasoning_tokens": 6324
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 4416,
+        "total_tokens": 11047
+      }
+    },
+    "review_error": null,
+    "review_text": "- **File:** `container_create.go`\n- **Line:** 286-295\n- **Vulnerability Class:** Improper Resource Limitation / Denial of Service\n- **Quote:**\n```go\n\t\t\tswitch {\n\t\t\tcase s.ResourceLimits.CPU != nil:\n\t\t\t\truntimeSpec.Linux.Resources.CPU = s.ResourceLimits.CPU\n\t\t\tcase s.ResourceLimits.Memory != nil:\n\t\t\t\truntimeSpec.Linux.Resources.Memory = s.ResourceLimits.Memory\n\t\t\tcase s.ResourceLimits.BlockIO != nil:\n\t\t\t\truntimeSpec.Linux.Resources.BlockIO = s.ResourceLimits.BlockIO\n\t\t\tcase s.ResourceLimits.Devices != nil:\n\t\t\t\truntimeSpec.Linux.Resources.Devices = s.ResourceLimits.Devices\n\t\t\t}\n```\n**Explanation:** In Go, a `switch` statement without an expression evaluates each case in order and executes *only the first one* that evaluates to true, as there is no implicit fallthrough. If a user specifies multiple resource limits (e.g., both CPU and Memory limits), only the first matched limit (CPU) will be applied to the cloned container, and the rest will be silently ignored. This failure to apply intended resource restrictions can allow a container to consume unbounded memory or block I/O, potentially leading to resource exhaustion and a Denial of Service (DoS) on the host system. This should be replaced with independent `if` statements.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

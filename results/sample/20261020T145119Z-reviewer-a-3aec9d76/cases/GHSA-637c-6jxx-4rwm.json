@@ -1,0 +1,147 @@
+{
+  "case_id": "GHSA-637c-6jxx-4rwm",
+  "fixed": {
+    "fixed_clean": false,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 157,
+            "start": 157
+          },
+          {
+            "end": 35,
+            "start": 35
+          },
+          {
+            "end": 182,
+            "start": 181
+          },
+          {
+            "end": 136,
+            "start": 135
+          },
+          {
+            "end": 132,
+            "start": 132
+          }
+        ],
+        "rationale": "Finding 4 says the operator's Kubernetes service-account token (serviceAccountTokenFile) is the default path in legacy mode and is sent to a caller-influenced Vault destination as the JWT. That is the ground-truth vulnerability: the operator token is used by default and can leak to tenant-controlled Vault. The review claims this still exists in the patched code, citing lines 157, 35, 181-182 and 135-136. The patched code limits this behaviour to an opt-in legacy mode with a warning, but the review still flags it as a live flaw.",
+        "reported_patched_vuln": true
+      },
+      "raw": "{\"reported_patched_vuln\":true,\"cited_ranges\":[{\"start\":157,\"end\":157},{\"start\":35,\"end\":35},{\"start\":181,\"end\":182},{\"start\":135,\"end\":136},{\"start\":132,\"end\":132}],\"rationale\":\"Finding 4 says the operator's Kubernetes service-account token (serviceAccountTokenFile) is the default path in legacy mode and is sent to a caller-influenced Vault destination as the JWT. That is the ground-truth vulnerability: the operator token is used by default and can leak to tenant-controlled Vault. The review claims this still exists in the patched code, citing lines 157, 35, 181-182 and 135-136. The patched code limits this behaviour to an opt-in legacy mode with a warning, but the review still flags it as a live flaw.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 6.487,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 618,
+          "prompt_tokens": 6384,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7002
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 277.482,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 18676,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 17494,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1181640000,
+        "num_sources_used": 0,
+        "prompt_tokens": 3918,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 3918
+        },
+        "total_tokens": 22594
+      }
+    },
+    "review_error": null,
+    "review_text": "Review of `hashicorpvault_handler.go` found several security issues. Line numbers refer to that file.\n\n### 1. Path injection in Vault login path\n- **File/line:** `hashicorpvault_handler.go:136`\n- **Class:** CWE-22 (path traversal) / CWE-88 (argument injection)\n- **Line:** `secret, err := client.Logical().Write(fmt.Sprintf(\"auth/%s/login\", vh.vault.Mount), data)`\n\n`vh.vault.Mount` is only checked for non-empty (line 119) and is interpolated into the API path with no allowlist, `PathEscape`, or rejection of `/`, `..`, `?`, or `#`. A caller who can set the mount can shift the `Write` off `auth/<mount>/login` onto another Vault path.\n\n### 2. Attacker-controlled token file path, forwarded to Vault\n- **File/line:** `hashicorpvault_handler.go:164` (read at 177; legacy bypass at 181–182; send at 135–136)\n- **Class:** CWE-73 (external control of file name/path) / CWE-200 (sensitive data exposure)\n- **Lines:**\n  - `path = credential.ServiceAccount`\n  - `token, err := readKubernetesServiceAccountProjectedToken(path)`\n  - `if legacy { return token, nil }`\n  - `data := map[string]any{\"jwt\": string(jwt), \"role\": vh.vault.Role}`\n\n`credential.ServiceAccount` replaces the configured token path and is passed to the reader with no confinement to an expected token directory. In legacy mode the bytes are returned with no audience check and later posted to Vault as `jwt`. That is an arbitrary read of operator-pod files, and the contents are sent to the configured Vault (which may be caller-influenced; see finding 4).\n\n### 3. Audience allowlist skipped for named service accounts\n- **File/line:** `hashicorpvault_handler.go:161–162`\n- **Class:** CWE-693 (protection mechanism failure) / CWE-441 (confused deputy)\n- **Line:** `token, err := GenerateBoundServiceAccountToken(ctx, credential.ServiceAccountName, vh.namespace, vh.acs)`\n\nThis branch returns before `validateK8sSATokenAudiences` (lines 184–186). File-based tokens are audience-checked in non-legacy mode; tokens minted for a caller-supplied `ServiceAccountName` are not. The operator then sends that token to Vault (lines 135–136). There is no visible check that the requesting user may impersonate that service account.\n\n### 4. Operator Kubernetes token sent to Vault in legacy mode\n- **File/line:** `hashicorpvault_handler.go:157` (constant at 35; unvalidated return at 181–182; send at 135–136)\n- **Class:** CWE-522 (insufficiently protected credentials) / CWE-200\n- **Line:** `path = serviceAccountTokenFile`\n\nIn legacy mode the default path is the operator API token (`/var/run/secrets/kubernetes.io/serviceaccount/token`). That credential is submitted to Vault as the Kubernetes JWT. The log at line 132 warns and continues. A Vault destination the caller can influence receives a token that can access the Kubernetes API.\n\n### 5. Outbound allowlist fails open and still sends credentials in warn mode\n- **File/line:** `hashicorpvault_handler.go:194–195` and `206–208`\n- **Class:** CWE-1188 (insecure default) / CWE-918 (SSRF) / CWE-319 (cleartext credential transmission)\n- **Lines:**\n  - `case \"\", outboundPolicyOff: return nil`\n  - `logger.Info(\"Warning: Vault endpoint is outside the allowlist; credentials may be sent to an untrusted destination. ...\")` followed by `return nil`\n\nEmpty policy and `off` skip destination checks. `warn` logs and still continues, so the Kubernetes JWT and Vault token are sent anyway. `http` is an accepted scheme (line 235), so those credentials can also go out in cleartext. `Initialize` validates the address only through this function (line 59) before `SetAddress` (line 69) and login.\n\n### 6. Allowlist does not cover where the client actually sends data\n- **File/line:** `hashicorpvault_handler.go:63–69` and `238`\n- **Class:** CWE-601 (unvalidated redirect) / CWE-693\n- **Lines:**\n  - `config := vaultapi.DefaultConfig()`\n  - `err = client.SetAddress(vh.vault.Address)`\n  - `return strings.EqualFold(ua.Scheme, ub.Scheme) && strings.EqualFold(ua.Host, ub.Host)`\n\nThe check compares scheme and host only. The client is the library default: redirects are not pinned back to the allowlist, and path/query on `vh.vault.Address` are ignored by the comparator but still become the request base. A 307/308 from an allowlisted host, or a base URL whose path is not what the operator allowlisted, can move the JWT or token off the compared host. Hosts are not IDNA-normalized before `EqualFold`, so Unicode-fold equivalents can compare equal while resolving differently.",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The known vulnerability is that when Credential is nil, lines 122-127 silently default to the operator's Kubernetes service-account token file. A tenant-controlled Vault address can then receive that token. No finding in the review identifies this silent default. Finding 2 concerns arbitrary file read through a config-supplied ServiceAccount path at line 137, which is a different weakness. Finding 3 covers SSRF to an attacker-controlled address at line 62, but it never mentions the default token fallback. Finding 6 notes the nil Credential only in the token branch, and it mentions the nil check at line 122 without identifying the default as a vulnerability. So no finding matches.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The known vulnerability is that when Credential is nil, lines 122-127 silently default to the operator's Kubernetes service-account token file. A tenant-controlled Vault address can then receive that token. No finding in the review identifies this silent default. Finding 2 concerns arbitrary file read through a config-supplied ServiceAccount path at line 137, which is a different weakness. Finding 3 covers SSRF to an attacker-controlled address at line 62, but it never mentions the default token fallback. Finding 6 notes the nil Credential only in the token branch, and it mentions the nil check at line 122 without identifying the default as a vulnerability. So no finding matches.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.636,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 248,
+          "prompt_tokens": 3856,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4104
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 78.965,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6233,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 5551,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 410220000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2676,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2676
+        },
+        "total_tokens": 8909
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has seven security issues. `vh.vault` is treated as untrusted operator input, such as a namespaced custom resource.\n\n1. **Path injection (CWE-22)** at `hashicorpvault_handler.go:144`. The line `secret, err := client.Logical().Write(fmt.Sprintf(\"auth/%s/login\", vh.vault.Mount), data)` interpolates `vh.vault.Mount` into the Vault API path with no allowlist or slash rejection. A value such as `../…` changes which endpoint is written. If the client already carries `VAULT_TOKEN` from `NewClient`, that write is authenticated, and the body includes the Kubernetes JWT.\n\n2. **Arbitrary file read (CWE-22)** at `hashicorpvault_handler.go:137`. The line `jwt, err = readKubernetesServiceAccountProjectedToken(vh.vault.Credential.ServiceAccount)` passes a config-supplied path to a file read. It is not restricted to `/var/run/secrets/kubernetes.io/serviceaccount/token` (the constant at line 33). The bytes are then sent outward as `jwt` at lines 143–144.\n\n3. **SSRF / credential exposure (CWE-918)** at `hashicorpvault_handler.go:62`. The line `err = client.SetAddress(vh.vault.Address)` sets the Vault address from config with no scheme or host allowlist. Later calls (`login`, `LookupSelf`) send the client token and the service-account JWT to that host, including `http://` or an attacker-controlled server.\n\n4. **Confused deputy (CWE-441)** at `hashicorpvault_handler.go:134`. The line `jwt = []byte(GenerateBoundServiceAccountToken(context.Background(), vh.vault.Credential.ServiceAccountName, vh.namespace, vh.acs))` mints a service-account token for a caller-supplied name using the operator’s credentials. This call site does not check that the requester may use that service account.\n\n5. **Authentication-context mix-up (CWE-287)** at `hashicorpvault_handler.go:106`. The line `case len(client.Token()) > 0:` breaks without applying `vh.vault.Credential.Token`. A process-wide `VAULT_TOKEN` loaded by `NewClient` is kept and used for this tenant, so the configured token is ignored and tenants share the operator credential.\n\n6. **Nil dereference (CWE-476)** at `hashicorpvault_handler.go:108`. The line `case len(vh.vault.Credential.Token) > 0:` panics when the authentication method is token, no ambient token is set, and `Credential` is nil. The Kubernetes branch nil-checks `Credential` at line 122, but this branch does not.\n\n7. **Nil dereference (CWE-476)** at `hashicorpvault_handler.go:148`. The line `token = secret.Auth.ClientToken` panics when `Write` returns a nil `secret` or a nil `secret.Auth` with a nil error, which the Vault client can do.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

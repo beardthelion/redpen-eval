@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-74vm-87hj-r66f",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is a nil-pointer dereference of schema in decodeValue, now guarded by the nil check at lines 273-275. The review does not claim a missing nil check or a panic. It reports validation bypass for schemas without a type (lines 350-367) and ignored errors in anyOf/oneOf (lines 293, 309). Both are unrelated to the nil schema dereference.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is a nil-pointer dereference of schema in decodeValue, now guarded by the nil check at lines 273-275. The review does not claim a missing nil check or a panic. It reports validation bypass for schemas without a type (lines 350-367) and ignored errors in anyOf/oneOf (lines 293, 309). Both are unrelated to the nil schema dereference.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.078,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 161,
+          "prompt_tokens": 3749,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3910
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 229.405,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 23135,
+        "completion_tokens_details": {
+          "reasoning_tokens": 22288
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1466,
+        "total_tokens": 24601
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Validation Bypass (Improper Input Validation)\n**File:** `req_resp_decoder.go`\n**Line:** 350-367\n**Vulnerability Class:** Validation Bypass\n\n**Quote:**\n```go\n350: \tswitch vDecoder := dec.(type) {\n351: \tcase *pathParamDecoder:\n352: \t\t_, found = vDecoder.pathParams[param]\n353: \tcase *urlValuesDecoder:\n354: \t\tif schema.Value.Pattern != \"\" {\n355: \t\t\treturn dec.DecodePrimitive(param, sm, schema)\n356: \t\t}\n357: \t\t_, found = vDecoder.values[param]\n358: \tcase *headerParamDecoder:\n359: \t\t_, found = vDecoder.header[http.CanonicalHeaderKey(param)]\n360: \tcase *cookieParamDecoder:\n361: \t\t_, err := vDecoder.req.Cookie(param)\n362: \t\tfound = err != http.ErrNoCookie\n363: \tdefault:\n364: \t\treturn nil, found, errors.New(\"unsupported decoder\")\n365: \t}\n366: \treturn nil, found, nil\n367: }\n```\n\n**Description:**\nWhen decoding parameters (such as query, header, or cookie parameters) using a schema that does not explicitly define a `type` (which is perfectly valid in OpenAPI 3.1 and JSON Schema), the `decodeValue` function falls through to the default switch statement. For these decoders, it merely checks if the parameter is present and returns `nil` for the value, instead of extracting the actual string provided in the request. \n\nConsequently, the subsequent validation step evaluates `nil` rather than the user's actual input. Because JSON Schema constraints like `maxLength`, `format`, `enum`, and `minLength` only apply when the value is of the corresponding type (e.g., string), validating `nil` will successfully pass. (Note: The author attempted a partial fix for `urlValuesDecoder` by checking `Pattern != \"\"`, but missed all other string constraints and completely missed headers and cookies). This allows an attacker to completely bypass schema constraints by sending malicious input, which the application may then read directly from the raw request.\n\n### 2. Validation Bypass (Improper Error Handling)\n**File:** `req_resp_decoder.go`\n**Line:** 293, 309\n**Vulnerability Class:** Validation Bypass / Improper Error Handling\n\n**Quote:**\n```go\n293: \t\t\tvalue, f, _ := decodeValue(dec, param, sm, sr, required)\n```\n```go\n309: \t\t\tv, f, _ := decodeValue(dec, param, sm, sr, required)\n```\n\n**Description:**\nIn the `AnyOf` and `OneOf` decoding loops, errors returned by recursive calls to `decodeValue` are explicitly ignored using the blank identifier (`_`). If an attacker provides an invalid value that fails to decode for all specified schemas (for example, providing a non-numeric string for a `type: integer` schema), `decodeValue` will silently swallow the decoding errors and return `nil`. \n\nIf the parameter is optional (`required` is false), the function returns `nil, true, nil`. The subsequent validation step will then validate `nil`. If the schema happens to allow null values (e.g., `anyOf: [{type: integer}, {type: null}]`), the validation will pass. This enables an attacker to bypass input validation and supply malformed data that the application might process, assuming it was safely validated as `null` or empty.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 273,
+            "start": 273
+          }
+        ],
+        "rationale": "Finding 2 reports that decodeValue dereferences schema.Value (line 273) with no nil check on schema or schema.Value, causing a nil-pointer panic and DoS. That is the same missing guard and weakness as the known vulnerability. The review's trigger scenario (an unresolved $ref or malicious spec) differs slightly from the response-header content schema in the ground truth, but the root cause is identical. Finding 1 (the oneOf >= 1 check) is a different bug and is ignored.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":273,\"end\":273}],\"rationale\":\"Finding 2 reports that decodeValue dereferences schema.Value (line 273) with no nil check on schema or schema.Value, causing a nil-pointer panic and DoS. That is the same missing guard and weakness as the known vulnerability. The review's trigger scenario (an unresolved $ref or malicious spec) differs slightly from the response-header content schema in the ground truth, but the root cause is identical. Finding 1 (the oneOf >= 1 check) is a different bug and is ignored.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.21,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 206,
+          "prompt_tokens": 3243,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3449
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 72.348,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 7002,
+        "completion_tokens_details": {
+          "reasoning_tokens": 6553
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1427,
+        "total_tokens": 8429
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the provided code for security vulnerabilities:\n\n### 1. Improper Input Validation (Validation Bypass)\n* **File:** `req_resp_decoder.go`\n* **Line:** 312\n* **Vulnerability Class:** Improper Input Validation (CWE-20)\n* **Quote:** `if isMatched >= 1 {`\n\n**Description:** \nAccording to the OpenAPI and JSON Schema specifications, the `oneOf` keyword requires that the given data must successfully validate against **exactly one** of the provided subschemas. By checking `if isMatched >= 1`, the code accepts payloads that match multiple schemas. This is a validation bypass that allows malformed or ambiguous data to pass through the decoder, which could lead to unexpected behavior or vulnerabilities in downstream components that expect strict `oneOf` enforcement. The condition should be `if isMatched == 1`.\n\n### 2. Nil Pointer Dereference (Denial of Service)\n* **File:** `req_resp_decoder.go`\n* **Line:** 273\n* **Vulnerability Class:** Nil Pointer Dereference (CWE-476) / Denial of Service\n* **Quote:** `if len(schema.Value.AllOf) > 0 {`\n\n**Description:** \nThe function accesses `schema.Value.AllOf` without first checking if `schema` or `schema.Value` is `nil`. In the `kin-openapi/openapi3` library, a `SchemaRef` represents either an inline schema or a reference (`$ref`). If the schema is an unresolved reference, `schema.Value` will be `nil`. If an attacker can supply a malicious OpenAPI specification (e.g., in dynamic API gateways or Swagger UI backends) or if the application fails to resolve all references at startup, processing a request against this schema will cause a runtime panic, leading to a Denial of Service (DoS). \n\n*(Note: This nil pointer vulnerability also cascades to lines 287, 301, 321, and 326 where `schema.Value` is accessed directly).*",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-vrcc-3ch7-hppw",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports an unrelated issue: additionalProperties overwriting explicitly defined properties in buildResObj (lines 1089-1097). It does not claim that parseArray dereferences a nil Items schema, which is the patched vulnerability. The nil check at lines 591-593 is not criticized.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review reports an unrelated issue: additionalProperties overwriting explicitly defined properties in buildResObj (lines 1089-1097). It does not claim that parseArray dereferences a nil Items schema, which is the patched vulnerability. The nil check at lines 591-593 is not criticized.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.483,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 130,
+          "prompt_tokens": 4016,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4146
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 138.15,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14305,
+        "completion_tokens_details": {
+          "reasoning_tokens": 13846
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2205,
+        "total_tokens": 16510
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1: Type Confusion / Denial of Service (DoS)\n**File:** `req_resp_decoder.go`\n**Lines:** 1089-1097\n**Vulnerability Class:** Type Confusion / Denial of Service\n\n**Description:**\nWhen an OpenAPI object schema defines both explicit `properties` and an `additionalProperties` schema, the `buildResObj` function first parses the explicitly defined properties and stores them in `resultMap` (lines 1078-1086). \n\nHowever, if `additPropsSchema != nil`, the code then iterates over *all* keys in the user-provided `objectParams` and parses them again using the `additPropsSchema`. It blindly assigns the result to `resultMap[k]`, which overwrites the previously parsed, schema-validated values. \n\nIf the `additionalProperties` schema specifies a different type than the explicit property schema (e.g., the property is an `integer` but additional properties are `string`), the value will be overwritten with the incorrect type. When the application later attempts to type-assert the value to the expected type defined in the property schema, it will panic, leading to a Denial of Service (DoS). An attacker can easily trigger this by supplying a valid property in their request payload.\n\nThe loop should skip keys that are already defined in `schema.Value.Properties`, similar to the safe logic implemented in the `else if` branch on line 1103.\n\n**Vulnerable Code:**\n```go\n  1089  \t\t\tfor k := range objectParams {\n  1090  \t\t\t\tr, err := buildResObj(params, mapKeys, k, additPropsSchema)\n  1091  \t\t\t\tif err != nil {\n  1092  \t\t\t\t\treturn nil, err\n  1093  \t\t\t\t}\n  1094  \t\t\t\tif r != nil {\n  1095  \t\t\t\t\tresultMap[k] = r\n  1096  \t\t\t\t}\n  1097  \t\t\t}\n```",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review's only finding is about additional-properties decoding overwriting already-decoded defined properties in buildResObj (lines 1083-1090). That is a different bug. The known vulnerability is a missing nil check on schemaRef.Value.Items in parseArray (line 594), where an array schema with no items causes a panic. The review does not mention parseArray or the nil Items dereference.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review's only finding is about additional-properties decoding overwriting already-decoded defined properties in buildResObj (lines 1083-1090). That is a different bug. The known vulnerability is a missing nil check on schemaRef.Value.Items in parseArray (line 594), where an array schema with no items causes a panic. The review does not mention parseArray or the nil Items dereference.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.965,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 153,
+          "prompt_tokens": 3973,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4126
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 141.666,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 14908,
+        "completion_tokens_details": {
+          "reasoning_tokens": 14388
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2073,
+        "total_tokens": 16981
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the security review of the provided code:\n\n### Finding 1\n**File:** req_resp_decoder.go  \n**Line:** 1088-1090  \n**Vulnerability Class:** Type Confusion / Denial of Service (DoS)  \n\n**Quote:**\n```go\n  1088  \t\t\t\tif r != nil {\n  1089  \t\t\t\t\tresultMap[k] = r\n  1090  \t\t\t\t}\n```\n\n**Description:**\nWhen decoding an object that has both explicitly defined properties (`schema.Value.Properties`) and a schema for additional properties (`schema.Value.AdditionalProperties.Schema`), the code first decodes the defined properties and stores them in `resultMap` (lines 1072-1080). \n\nHowever, in the subsequent block (lines 1081-1091), the code iterates over all provided parameters (`objectParams`) and decodes them again using the `additPropsSchema`. Because it fails to check if the key `k` already exists in `resultMap` (an oversight confirmed by the fact that the `else if` branch on line 1097 explicitly includes this safety check: `if _, exists := resultMap[k]; !exists`), it will overwrite the correctly decoded defined properties with the result of decoding them as additional properties.\n\nIf an attacker supplies a parameter that matches a defined property, and the `additPropsSchema` specifies a different type than the defined property (e.g., the property is an `integer` but additional properties are `string`), the final value in `resultMap` will be overwritten with the unexpected type. When the application later attempts to type-assert this value based on the expected OpenAPI schema, it will panic, leading to a Denial of Service (DoS). It could also lead to schema validation bypasses if the additional properties schema is less strict than the defined property schema. \n\n**Recommendation:**\nAdd a check to ensure that defined properties are not overwritten by the additional properties decoder:\n```go\n  1083  \t\t\tfor k := range objectParams {\n  1084  \t\t\t\tif _, exists := resultMap[k]; exists {\n  1085  \t\t\t\t\tcontinue\n  1086  \t\t\t\t}\n  1087  \t\t\t\tr, err := buildResObj(params, mapKeys, k, additPropsSchema)\n  // ...\n```",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-24cc-9352-h2pg",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the missing validation of atom sizes against the header length, which led to an infinite loop. The patched code now checks this at line 623 (`atom_size < header_size`). The review does not claim that this check is missing or insufficient. It reports four other issues: divide by zero, a negative atom_size from the stsd double skip, unbounded reads, and short-data parse errors. Issue 2 does touch atom_size handling and mentions seeking backward, but it concerns the version/flags skips at lines 659-662, not the header-size validation. It is a different bug, so this does not count as reporting the patched vulnerability.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the missing validation of atom sizes against the header length, which led to an infinite loop. The patched code now checks this at line 623 (`atom_size < header_size`). The review does not claim that this check is missing or insufficient. It reports four other issues: divide by zero, a negative atom_size from the stsd double skip, unbounded reads, and short-data parse errors. Issue 2 does touch atom_size handling and mentions seeking backward, but it concerns the version/flags skips at lines 659-662, not the header-size validation. It is a different bug, so this does not count as reporting the patched vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 10.741,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 235,
+          "prompt_tokens": 9429,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 9664
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 315.578,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 25102,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 24575,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1637900000,
+        "num_sources_used": 0,
+        "prompt_tokens": 7453,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 7453
+        },
+        "total_tokens": 32555
+      }
+    },
+    "review_error": null,
+    "review_text": "The MP4 parser has four security issues, all triggered by a crafted file. They are denial-of-service and parser-integrity bugs, not memory corruption.\n\n**1. tinytag.py:874 — CWE-369 (Divide By Zero)**\n`yield 'duration', duration / time_scale`\n`time_scale` comes from the `mvhd` atom (`>I` or `>Q`) and is not checked. A zero timescale raises `ZeroDivisionError` and aborts parsing.\n\n**2. tinytag.py:660 — CWE-191 (Integer Underflow)**\n`if atom_type in self._FLAGGED_ATOMS:  # skip atom flags`\n`stsd` is in both `_VERSIONED_ATOMS` and `_FLAGGED_ATOMS`, and the second skip is not an `elif` and does not recheck `atom_size >= 4`. A payload of 4–7 bytes makes `atom_size` negative (lines 659–662). That negative value is then used as `stop_pos=curr_pos + atom_size` (line 669) or `fh.seek(atom_size, SEEK_CUR)` (line 705), so the parser seeks backward and no longer honors the container end.\n\n**3. tinytag.py:674 — CWE-770 (Allocation of Resources Without Limits)**\n`data = fh.read(atom_size)`\n`atom_size` is taken from the file (`>I`, or `>Q` up to 2^64−1 at line 622) with no upper bound. Any leaf that is parsed (`mp4a`, `data`, `covr`, and so on) is buffered in full, so a huge declared atom exhausts memory.\n\n**4. tinytag.py:717 — CWE-20 (Improper Input Validation) / CWE-248 (Uncaught Exception)**\n`data_type = unpack_from('>I', data)[0]`\nFixed offsets and `unpack` calls do not check the remaining length, so a short atom raises `IndexError` or `struct.error`. Same pattern at 736, 745, 753, 805, 808, 816, 831, 834, 841, 842, 856, 858, 860, 868, 871, and 873. Example: `byte = data[offset]` (816) and `bitdepth = data[45]` (856).",
+    "status": "scored"
+  },
+  "guard_class": "type-range-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The ground truth is an infinite loop in _traverse_atoms (lines 606-683) caused by atom sizes that are never validated against the header length. The review's infinite-loop finding (#1) targets _parse_custom_field at lines 743 and 759, which is a different function with a similar pattern but is not the _traverse_atoms bug. Finding #3 cites lines 652 and 679 in _traverse_atoms, but it describes unbounded read/seek memory and overflow, not an infinite loop from an invalid size. _traverse_atoms already handles atom_size <= 0 at line 631, so no finding describes the reference weakness.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The ground truth is an infinite loop in _traverse_atoms (lines 606-683) caused by atom sizes that are never validated against the header length. The review's infinite-loop finding (#1) targets _parse_custom_field at lines 743 and 759, which is a different function with a similar pattern but is not the _traverse_atoms bug. Finding #3 cites lines 652 and 679 in _traverse_atoms, but it describes unbounded read/seek memory and overflow, not an infinite loop from an invalid size. _traverse_atoms already handles atom_size <= 0 at line 631, so no finding describes the reference weakness.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.89,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 238,
+          "prompt_tokens": 9694,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 9932
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 248.707,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 18209,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 17253,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1219640000,
+        "num_sources_used": 0,
+        "prompt_tokens": 7219,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 7219
+        },
+        "total_tokens": 25428
+      }
+    },
+    "review_error": null,
+    "review_text": "Security review of the MP4 parser in `tinytag.py` found several denial-of-service issues in untrusted-file parsing. No memory-corruption or injection bugs showed up in this Python code.\n\n**1. Infinite loop (CWE-835)**\nFile: `tinytag.py`, lines 743 and 759\n```\natom_size = unpack_from('>I', atom_header)[0] - header_len\n```\n```\nfh.seek(atom_size, SEEK_CUR)\n```\n`_parse_custom_field` subtracts the 8-byte header from the attacker-controlled size and, for any inner atom that is not `name`/`data`, seeks by that delta. A size of 0 yields `atom_size == -8`, so `seek(-8, SEEK_CUR)` lands back on the same header and the `while` loop never ends. Sizes 1–7 seek backward as well and can be cycled. This runs on a normal `----` (freeform) atom while parsing tags. Negative sizes on the `name`/`data` branches hit `fh.read(atom_size)` and raise `ValueError` instead.\n\n**2. Divide by zero (CWE-369)**\nFile: `tinytag.py`, line 850\n```\nyield 'duration', duration / time_scale\n```\n`time_scale` comes from the `mvhd` atom and is not checked. A zero timescale raises `ZeroDivisionError`. Both the version-0 and version-1 branches use this expression.\n\n**3. Unbounded read/seek from atom size (CWE-400 / CWE-789)**\nFile: `tinytag.py`, line 652\n```\nfor fieldname, value in sub_path(fh.read(atom_size)):\n```\nFile: `tinytag.py`, line 679\n```\nfh.seek(atom_size, SEEK_CUR)\n```\nPayload length is taken from the 32-bit size, or from the 64-bit extended size when the size field is 1, and is never capped against the remaining input or a maximum. `read(atom_size)` can try to allocate up to ~4 GiB (32-bit size) or far more (64-bit size). `seek` with an offset that does not fit in a signed 64-bit `off_t` raises `OverflowError`. Either one is an unhandled crash on a crafted atom (`mdat`, `free`, `mvhd`, `mp4a`, and so on).\n\n**4. Missing bounds checks before unpack/index (CWE-20 / CWE-125)**\nShort or truncated atoms are indexed or unpacked with fixed offsets and no length check, so malformed input raises `struct.error` or `IndexError` instead of `ParseError`.\n\nFile: `tinytag.py`, line 690\n```\ndata_type = unpack_from('>I', data_atom)[0]\n```\nFile: `tinytag.py`, line 709\n```\nnumbers = unpack('>3H', number_data)\n```\nFile: `tinytag.py`, line 781\n```\nchannels = unpack_from('>H', data, 16)[0]\n```\nFile: `tinytag.py`, line 792\n```\nbyte = data[offset]\n```\nFile: `tinytag.py`, line 818\n```\nsecond = data[offset + 1]\n```\nFile: `tinytag.py`, line 832\n```\nbitdepth = data[45]\n```\nSame pattern at lines 726, 784, 807, 817, 834, 836, 844, 847, and 849. `_read_descriptor_size` only caps its own loop at 4 bytes; later uses of `offset` are unchecked.\n\n**5. Negative genre index (CWE-129)** — low\nFile: `tinytag.py`, lines 718 and 721\n```\nidx = unpack_from('>H', data_atom, 8)[0] - 1\n```\n```\nyield 'genre', _ID3._ID3V1_GENRES[idx]\n```\nThe check is only `idx < len(...)`. A stored value of 0 makes `idx == -1`, which passes that test and returns the last genre via Python’s negative indexing. Incorrect metadata, not a crash.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-x586-xvc8-g7q6",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is ResourceSerializer's $fill$ filling a thenable into a promise. The patched code adds an isThenable check at lines 199-205. The review does not claim the ResourceSerializer is still vulnerable. Finding 3 cites the '~' OBJECT_TRANSFORMS path (line 703) and explicitly says ResourceSerializer rejects thenables, so it concerns a different code path. The other findings are unrelated issues.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is ResourceSerializer's $fill$ filling a thenable into a promise. The patched code adds an isThenable check at lines 199-205. The review does not claim the ResourceSerializer is still vulnerable. Finding 3 cites the '~' OBJECT_TRANSFORMS path (line 703) and explicitly says ResourceSerializer rejects thenables, so it concerns a different code path. The other findings are unrelated issues.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.29,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 185,
+          "prompt_tokens": 13750,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 13935
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 207.333,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 16430,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 15715,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1171760000,
+        "num_sources_used": 0,
+        "prompt_tokens": 10162,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 10162
+        },
+        "total_tokens": 26592
+      }
+    },
+    "review_error": null,
+    "review_text": "The file `serializers.ts` contains 8 security vulnerabilities.\n\n1. **File:** `serializers.ts`, **Line:** 238, **Class:** ReDoS / insecure deserialization. The code `return new RegExp(source, flags);` compiles an untrusted pattern and flags with no complexity or flag checks. A hostile pattern can hang the event loop when the regex is later used, and invalid flags throw.\n\n2. **File:** `serializers.ts`, **Line:** 706, **Class:** Unhandled promise rejection (DoS). The code `return Promise.reject(obj);` rejects without a handler. Elsewhere, `createHandledRejectedPromise` attaches a `.catch`, but this path does not. On Node, an unhandled rejection can crash the process.\n\n3. **File:** `serializers.ts`, **Line:** 703, **Class:** Thenable injection. The code `return Promise.resolve(obj);` will invoke `.then` if `obj` is thenable. `ResourceSerializer` rejects thenables, but this transform does not, so a revived thenable can run attacker-controlled code during deserialization.\n\n4. **File:** `serializers.ts`, **Line:** 360, **Class:** Prototype pollution / unsafe property injection. The code `const [id, prop] = data.split(' ');` stores an unsanitized property name on `SignalWrapper`. That type exists to access `ref[prop]` (see line 351). A key such as `__proto__` or `constructor` can pollute prototypes or reach privileged objects when the wrapper is later read or written.\n\n5. **File:** `serializers.ts`, **Line:** 150, **Class:** Insecure deserialization of executable references. The code `return parseQRL(data, containerState.$containerEl$);` revives a QRL from raw input with no allowlist or integrity check in this file. The same pattern appears at line 275 with `return componentQrl(qrl);`. On a server action boundary, client-controlled state can retarget QRLs or components.\n\n6. **File:** `serializers.ts`, **Line:** 439, **Class:** Insecure deserialization (XSS gadget). The code `const node = new JSXNodeImpl(` rebuilds a JSX node from split, untrusted ids, and `parseInt(flags, 10)` is not checked. Revived `type`, `props`, and `children` are later rendered, so a tampered payload can inject elements, props, or slot and fragment types.\n\n7. **File:** `serializers.ts`, **Line:** 259, **Class:** Sensitive object injection. The code `return doc;` means any value whose prefix selects `DocumentSerializer` becomes the live `Document`. The payload is ignored, so an attacker can plant a host document reference that was not in the original graph.\n\n8. **File:** `serializers.ts`, **Line:** 465, **Class:** Denial of service (unbounded allocation). The code `return BigInt(data);` allocates from an unbounded digit string. The same class of failure exists at line 401 with `const array = JSON.parse(data);` (no schema or size check; throws or retains a huge structure), line 220 with `$prepare$: (data) => new URL(data),` (throws, and accepts dangerous schemes such as `javascript:`), and line 480 with `const buf = atob(data);` (throws on hostile input).",
+    "status": "scored"
+  },
+  "guard_class": "type-range-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The vulnerability is that ResourceSerializer's `$fill$` (lines 179-189) puts a deserialized value into `Promise.resolve(resource._resolved)` without a thenable check, so an attacker-supplied thenable gets its `then` invoked. None of the 12 findings describes this. Finding 11 covers `Promise.reject` in OBJECT_TRANSFORMS at line 682, but that is an unhandled-rejection issue, not thenable assimilation in the resource fill path. The other findings are generic deserialization, ReDoS, prototype pollution and similar concerns, and none mentions thenables or the resource `$fill$`.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The vulnerability is that ResourceSerializer's `$fill$` (lines 179-189) puts a deserialized value into `Promise.resolve(resource._resolved)` without a thenable check, so an attacker-supplied thenable gets its `then` invoked. None of the 12 findings describes this. Finding 11 covers `Promise.reject` in OBJECT_TRANSFORMS at line 682, but that is an unhandled-rejection issue, not thenable assimilation in the resource fill path. The other findings are generic deserialization, ReDoS, prototype pollution and similar concerns, and none mentions thenables or the resource `$fill$`.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.147,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 246,
+          "prompt_tokens": 14347,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 14593
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 253.305,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 20469,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 19192,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1409220000,
+        "num_sources_used": 0,
+        "prompt_tokens": 9918,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 9918
+        },
+        "total_tokens": 30387
+      }
+    },
+    "review_error": null,
+    "review_text": "The review found security vulnerabilities in `serializers.ts`. Each finding below lists the file, line, vulnerability class, and the quoted line.\n\n1. File: `serializers.ts`, line 643. Vulnerability class: CWE-502 (Insecure Deserialization) / CWE-345 (Insufficient Verification of Data Authenticity). The line reads: `const value = serializer.$prepare$(data.slice(1), containerState, doc);`. `prepare` selects a reviver from the first character and runs it on the remainder. There is no signature, allowlist, or schema check, so a tampered payload chooses the type and the body.\n\n2. File: `serializers.ts`, line 133. Vulnerability class: CWE-502 (Insecure Deserialization of executable references). The line reads: `return parseQRL(data, containerState.$containerEl$);`. A QRL string is turned back into a callable reference. Captures are later filled from payload object ids in `$fill$` at lines 136–137, so both the target and the arguments are attacker-controlled if the blob is.\n\n3. File: `serializers.ts`, line 251. Vulnerability class: CWE-502 (Insecure Deserialization of executable references). The line reads: `return componentQrl(qrl);`. This is the same pattern for components: `parseQRL` at line 250, then `componentQrl`, with captures restored at lines 255–257.\n\n4. File: `serializers.ts`, line 285. Vulnerability class: CWE-502 (Insecure Deserialization). The line reads: `return new SignalDerived(fn as any, args as any[], fn);`. The function id and argument ids come from an unvalidated `data.split(' ')` at lines 282–284 and are installed as the derived-signal function.\n\n5. File: `serializers.ts`, line 214. Vulnerability class: CWE-1333 (Inefficient Regular Expression Complexity) / CWE-20 (Improper Input Validation). The line reads: `return new RegExp(source, flags);`. The source and flags are taken from the payload at lines 211–213 with no complexity limit or flag allowlist. A crafted pattern is a ReDoS gadget once the `RegExp` is used. If the input has no space, `indexOf` is `-1` and `flags = data.slice(0, -1)`, which can throw or build an unintended expression.\n\n6. File: `serializers.ts`, line 333. Vulnerability class: CWE-1321 (Prototype Pollution) / CWE-915 (Improperly Controlled Modification of Dynamically-Determined Object Attributes) / CWE-116 (Improper Encoding). The line reads: ``return `${getObjId(obj.ref)} ${obj.prop}`;``. The property name is embedded raw in a space-delimited field. On restore, line 336 reads `const [id, prop] = data.split(' ');` and line 337 reads `return new SignalWrapper(id as any, prop);`. There is no denylist, so a tampered `prop` can be `__proto__`, `constructor`, or `prototype`. A legitimate name that contains a space is truncated, so the wrapper reads or writes a different property.\n\n7. File: `serializers.ts`, line 235. Vulnerability class: CWE-502 (Insecure Deserialization) / unexpected privileged object injection. The line reads: `return doc;`. Any payload whose prefix is `\\u000F` materializes the live `Document`, ignoring the data. That reference can then be wired into QRL captures or other restored objects.\n\n8. File: `serializers.ts`, line 426. Vulnerability class: CWE-79 (Cross-site Scripting) / CWE-502 (Insecure Deserialization). The line reads: `node.type = getResolveJSXType(getObject(node.type as string));`. The type, props, children, and flags are split from attacker-controlled input at line 414 and passed into `JSXNodeImpl` at lines 415–421, including `parseInt(flags, 10)` at line 420. Only `:slot` and `:fragment` are remapped at lines 704–711. Any other type and props are restored and will be rendered later with no check here.\n\n9. File: `serializers.ts`, line 441. Vulnerability class: CWE-400 (Uncontrolled Resource Consumption). The line reads: `return BigInt(data);`. The payload digit string is passed to `BigInt` with no length limit. A large digit string can stall or exhaust memory during resume.\n\n10. File: `serializers.ts`, line 377. Vulnerability class: CWE-20 (Improper Input Validation) / CWE-400 (Uncontrolled Resource Consumption). The line reads: `const array = JSON.parse(data);`. The parsed value is iterated and appended at lines 379–380 with no check that it is an array of string pairs. A deep or huge JSON value is a CPU/memory DoS, and a non-array throws during deserialization.\n\n11. File: `serializers.ts`, line 682. Vulnerability class: CWE-248 (Uncaught Exception) / availability. The line reads: `return Promise.reject(obj);`. This creates a rejected promise with no local `.catch`. Unlike the resource path at lines 184–185, nothing attaches a handler here. On runtimes that treat unhandled rejections as fatal, deserializing a `_` transform can crash the process. The rejection reason is also whatever object the payload supplied.\n\n12. File: `serializers.ts`, line 196. Vulnerability class: CWE-939 (Improper Authorization in Handler for Custom URL Scheme). The line reads: `$prepare$: (data) => new URL(data),`. The string is accepted with no protocol allowlist, so `javascript:`, `data:`, and similar URLs round-trip. This file does not navigate, but the restored `URL` is a gadget if a later sink uses `.href` for navigation or a request.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

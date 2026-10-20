@@ -1,0 +1,119 @@
+{
+  "case_id": "GHSA-w5f2-9q9c-ff4h",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says the code is secure and that deserialization uses msgspec with an allowlist instead of pickle. It does not claim the pickle deserialization vulnerability is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says the code is secure and that deserialization uses msgspec with an allowlist instead of pickle. It does not claim the pickle deserialization vulnerability is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 5.018,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 88,
+          "prompt_tokens": 4979,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 5067
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 16.266,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 2102,
+        "completion_tokens_details": {
+          "reasoning_tokens": 1928
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2928,
+        "total_tokens": 5030
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided code and found no security vulnerabilities. \n\nThe implementation follows secure coding practices, notably:\n- **Safe Deserialization:** It uses `msgspec` with a strict type definition (`WireIPCData`) instead of unsafe alternatives like `pickle`, effectively preventing arbitrary code execution during deserialization.\n- **Constrained Dynamic Imports:** The dynamic module loading in `Deserialize` (`importlib.import_module`) relies on `module` and `name` values fetched from a local, server-side mapping (`WRAPPER_TYPES`) keyed by the strictly validated type of the decoded descriptor. This prevents attackers from manipulating the payload to import arbitrary modules or classes.\n- **Thread Safety:** The lazy initialization of device mappings (`_discover_devices`) correctly utilizes a threading lock (`_device_mapping_lock`) to prevent race conditions.",
+    "status": "scored"
+  },
+  "guard_class": "allowlist-denylist",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 169,
+            "start": 169
+          }
+        ],
+        "rationale": "The review flags pickle.loads(data) at line 169 in Deserialize as insecure deserialization (CWE-502). It explains that attacker-controlled bytes can execute arbitrary code. This is the same weakness as the ground truth: unsafe pickle deserialization of IPC wire bytes, with no data-only format or type allowlist.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":169,\"end\":169}],\"rationale\":\"The review flags pickle.loads(data) at line 169 in Deserialize as insecure deserialization (CWE-502). It explains that attacker-controlled bytes can execute arbitrary code. This is the same weakness as the ground truth: unsafe pickle deserialization of IPC wire bytes, with no data-only format or type allowlist.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.601,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 153,
+          "prompt_tokens": 4080,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4233
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 7.863,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 575,
+        "completion_tokens_details": {
+          "reasoning_tokens": 434
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2277,
+        "total_tokens": 2852
+      }
+    },
+    "review_error": null,
+    "review_text": "- File: ipc_wrapper.py\n- Line: 169\n- Vulnerability class: Insecure Deserialization (CWE-502)\n- Quote: `return pickle.loads(data)`\n\n**Explanation:**\nThe `Deserialize` method uses `pickle.loads()` to deserialize data. The `pickle` module is not secure against erroneously or maliciously constructed data. If the `data` argument can be controlled or influenced by an attacker (e.g., if the IPC mechanism receives data from an untrusted source, over a network, or from a lower-privileged process), they can craft a malicious pickle payload that executes arbitrary Python code upon deserialization.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

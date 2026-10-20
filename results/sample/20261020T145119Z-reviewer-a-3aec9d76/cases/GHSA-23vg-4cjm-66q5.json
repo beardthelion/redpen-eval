@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-23vg-4cjm-66q5",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports no vulnerabilities and says the encoded-slash check runs before ValidateRequest. It does not claim the encoded path separator issue is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review reports no vulnerabilities and says the encoded-slash check runs before ValidateRequest. It does not claim the encoded path separator issue is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.37,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 84,
+          "prompt_tokens": 3468,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3552
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 764.651,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 56472,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 56383,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 3431020000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2999,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2999
+        },
+        "total_tokens": 59471
+      }
+    },
+    "review_error": null,
+    "review_text": "No vulnerabilities found.\n\nThe request path is matched and then checked for encoded-slash operation confusion (`%2F`/`%2f`) before `ValidateRequest` runs. Authentication is not disabled by default (`AuthenticationFunc` is left nil so missing credentials fail closed), and `NoopAuthenticationFunc` is an explicit opt-in. I did not find a request-controlled path, injection, or authorization-bypass bug in this file.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "Finding 2 says the validated route and the route the handler serves could disagree. It treats this as a generic gap between legacyrouter and h.Handler. It never mentions encoded path separators (%2F), decoded-path validation, or a missing input-validation guard. It also states that no path traversal is present. It reaches the same kind of impact (authorized as one operation, executed as another) but not the same weakness or missing guard, so it is not a match. Finding 1 is unrelated.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"Finding 2 says the validated route and the route the handler serves could disagree. It treats this as a generic gap between legacyrouter and h.Handler. It never mentions encoded path separators (%2F), decoded-path validation, or a missing input-validation guard. It also states that no path traversal is present. It reaches the same kind of impact (authorized as one operation, executed as another) but not the same weakness or missing guard, so it is not a match. Finding 1 is unrelated.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 5.658,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 564,
+          "prompt_tokens": 3134,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3698
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 141.323,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 9170,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 8819,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 582080000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2458,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2458
+        },
+        "total_tokens": 11628
+      }
+    },
+    "review_error": null,
+    "review_text": "The file has two security issues. No request-time injection, path traversal, or authentication bypass is present in this file.\n\n**1. validation_handler.go:45 — CWE-1188 (Insecure Default Initialization)**\n```go\nh.Handler = http.DefaultServeMux\n```\nIf `Handler` is unset, every request that passes OpenAPI route matching is dispatched to the process-global mux. Packages register routes on that mux from `init` (notably `net/http/pprof` and `expvar`). A spec path that also matches one of those routes exposes it without an explicit choice by the application.\n\n**2. validation_handler.go:84 — CWE-436 (Interpretation Conflict), with dispatch at line 60**\n```go\nroute, pathParams, err := h.router.FindRoute(r)\n```\n```go\nh.Handler.ServeHTTP(w, r)\n```\nSecurity and schema checks use `legacyrouter` (`h.router`, set at line 39). The request is then forwarded unchanged to a separate `h.Handler` that routes on its own. If those two disagree, a request can be authorized against one operation and executed as another (incorrect authorization). Nothing in this file binds the validated route to the handler that runs.\n\nNo other vulnerability in this file. `AuthenticationFunc` is not defaulted to a success stub (line 47); a nil func is only forwarded (line 90). `NoopAuthenticationFunc` (line 18) always succeeds, but it is opt-in, not the default. `LoadFromFile(h.File)` (line 32) is startup configuration, not request input.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

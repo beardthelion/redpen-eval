@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-23vg-4cjm-66q5",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review says the code has no vulnerabilities and calls checkEncodedPathSeparator a robust mitigation of the encoded-path-separator issue. It does not claim the patched vulnerability is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The review says the code has no vulnerabilities and calls checkEncodedPathSeparator a robust mitigation of the encoded-path-separator issue. It does not claim the patched vulnerability is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.051,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 99,
+          "prompt_tokens": 3587,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3686
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 41.991,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 5513,
+        "completion_tokens_details": {
+          "reasoning_tokens": 5353
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1894,
+        "total_tokens": 7407
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided Go code and found no security vulnerabilities. \n\nThe code implements an OpenAPI 3 validation middleware. It correctly loads the OpenAPI specification, sets up the router, and validates incoming HTTP requests. \n\nNotably, the `checkEncodedPathSeparator` function is a robust mitigation against a specific class of path confusion vulnerabilities (such as CVE-2023-49295). It prevents scenarios where the OpenAPI validation router and the underlying application router (e.g., `gorilla/mux`) interpret encoded path separators (`%2F` / `%2f`) differently, which could otherwise allow an attacker to bypass security requirements by having the middleware validate one route while the application serves another. The shadow request cloning and route comparison logic is implemented securely and correctly.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review reports no vulnerabilities and never mentions encoded path separators or a mismatch between the validated operation and the operation actually served. No finding matches the known vulnerability.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review reports no vulnerabilities and never mentions encoded path separators or a mismatch between the validated operation and the operation actually served. No finding matches the known vulnerability.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.564,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 87,
+          "prompt_tokens": 2874,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 2961
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 37.076,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 3466,
+        "completion_tokens_details": {
+          "reasoning_tokens": 3308
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 1291,
+        "total_tokens": 4757
+      }
+    },
+    "review_error": null,
+    "review_text": "I have reviewed the provided Go code and found no security vulnerabilities. \n\nThe code implements a standard HTTP middleware/handler pattern for OpenAPI 3 request validation using the `kin-openapi` library. \n- Struct initialization and dependency loading (`Load` method) are handled safely.\n- HTTP request routing and validation (`ServeHTTP`, `Middleware`, `before`, `validateRequest`) correctly pass the request context and handle errors by delegating to an `ErrorEncoder`.\n- There are no exposed sinks for common web vulnerabilities (such as XSS, SQLi, Path Traversal, or CSRF) within this specific file, as inputs like `h.File` are intended to be developer-configured rather than user-controlled. \n\n**Conclusion:** No vulnerabilities found.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

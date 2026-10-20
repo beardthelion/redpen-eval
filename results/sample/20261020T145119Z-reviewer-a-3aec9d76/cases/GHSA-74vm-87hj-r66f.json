@@ -1,0 +1,156 @@
+{
+  "case_id": "GHSA-74vm-87hj-r66f",
+  "fixed": {
+    "fixed_clean": false,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 277,
+            "start": 277
+          },
+          {
+            "end": 273,
+            "start": 273
+          },
+          {
+            "end": 291,
+            "start": 291
+          },
+          {
+            "end": 305,
+            "start": 305
+          },
+          {
+            "end": 325,
+            "start": 325
+          },
+          {
+            "end": 330,
+            "start": 330
+          }
+        ],
+        "rationale": "Finding 3 says decodeValue can still panic on a nil dereference of schema.Value, citing lines 277, 291, 305, 325 and 330. That is the same bug class as the patched vulnerability, a nil-pointer panic in decodeValue. The patch added a `schema == nil` check at line 273. The review argues the remaining risk is a non-nil SchemaRef whose Value is nil, so it is claiming a nil-dereference panic persists in the code shown. The other two findings (oneOf exclusivity, discarded errors) are unrelated.",
+        "reported_patched_vuln": true
+      },
+      "raw": "{\"reported_patched_vuln\":true,\"cited_ranges\":[{\"start\":277,\"end\":277},{\"start\":273,\"end\":273},{\"start\":291,\"end\":291},{\"start\":305,\"end\":305},{\"start\":325,\"end\":325},{\"start\":330,\"end\":330}],\"rationale\":\"Finding 3 says decodeValue can still panic on a nil dereference of schema.Value, citing lines 277, 291, 305, 325 and 330. That is the same bug class as the patched vulnerability, a nil-pointer panic in decodeValue. The patch added a `schema == nil` check at line 273. The review argues the remaining risk is a non-nil SchemaRef whose Value is nil, so it is claiming a nil-dereference panic persists in the code shown. The other two findings (oneOf exclusivity, discarded errors) are unrelated.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 4.471,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 281,
+          "prompt_tokens": 3104,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3385
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 44.284,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 3154,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 2784,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 222660000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2535,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2535
+        },
+        "total_tokens": 5689
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has three security vulnerabilities.\n\n1. **Improper input validation (oneOf exclusivity bypass), CWE-20.** File: `req_resp_decoder.go`, line 316. The quoted line is `if isMatched >= 1 {`. JSON Schema `oneOf` requires exactly one subschema to match. This accepts one or more matches and returns the last one assigned at line 312. Input that satisfies multiple alternatives is treated as valid, so exclusivity constraints (for example, discriminated payloads) can be bypassed.\n\n2. **Validation bypass via discarded errors, CWE-390 / CWE-20.** File: `req_resp_decoder.go`, lines 293 and 309. The quoted lines are `value, f, _ := decodeValue(dec, param, sm, sr, required)` and `v, f, _ := decodeValue(dec, param, sm, sr, required)`. Decode errors are ignored. Lines 295–296 and 311–313 treat any non-nil value as success and return `nil` error. A subschema decode that returns both a value and an error (including the `allOf` path at line 288) is accepted, so constraint failures are dropped.\n\n3. **Nil dereference / panic (availability), CWE-476.** File: `req_resp_decoder.go`, line 277. The quoted line is `if len(schema.Value.AllOf) > 0 {`. Only `schema == nil` is checked (line 273). The same unchecked `schema.Value` use appears at lines 291, 305, 325, and 330. A non-nil `SchemaRef` with a nil `Value` (unresolved `$ref`) panics and can crash the decoder.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 273,
+            "start": 273
+          }
+        ],
+        "rationale": "Finding 6 identifies that `schema.Value` is dereferenced at line 273 with no nil check, which causes a nil-pointer panic during decoding. This is the same missing guard and weakness as the known vulnerability. It also adds a recursion-depth concern, but the nil-deref portion matches. It cites line 273, and mentions 287, 301, 321, 326 only in passing.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":273,\"end\":273}],\"rationale\":\"Finding 6 identifies that `schema.Value` is dereferenced at line 273 with no nil check, which causes a nil-pointer panic during decoding. This is the same missing guard and weakness as the known vulnerability. It also adds a recursion-depth concern, but the nil-deref portion matches. It cites line 273, and mentions 287, 301, 321, 326 only in passing.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.813,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 168,
+          "prompt_tokens": 3536,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 3704
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 76.066,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 5214,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 4543,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 345620000,
+        "num_sources_used": 0,
+        "prompt_tokens": 2503,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 2503
+        },
+        "total_tokens": 7717
+      }
+    },
+    "review_error": null,
+    "review_text": "The file `req_resp_decoder.go` contains six security findings.\n\n**1. File:** `req_resp_decoder.go`, line **312**. **Class:** Improper input validation (oneOf exclusivity bypass, CWE-20 / CWE-1287). The code quotes `if isMatched >= 1 {`. JSON Schema `oneOf` requires exactly one match. `>= 1` accepts two or more matches and returns the last one, so ambiguous input is treated as valid.\n\n**2. File:** `req_resp_decoder.go`, line **289**. **Class:** Fail-open error handling (CWE-390 / CWE-20). The code quotes `value, f, _ := decodeValue(dec, param, sm, sr, required)`. The decode error is discarded. A non-nil value is returned at lines 291–292 even when that alternative failed validation. If every branch yields a nil value plus an error, an optional `anyOf` still succeeds at line 298.\n\n**3. File:** `req_resp_decoder.go`, line **305**. **Class:** Fail-open error handling (CWE-390 / CWE-20). The code quotes `v, f, _ := decodeValue(dec, param, sm, sr, required)`. Same discarded-error pattern on `oneOf`. Combined with line 312, a constraint failure that still returns a value counts as a match. If nothing matches, line 318 returns success for optional parameters.\n\n**4. File:** `req_resp_decoder.go`, line **362**. **Class:** Improper input validation (CWE-20). The code quotes `return nil, found, nil`. When `schema.Value.Type` is nil and the schema is not `allOf`/`anyOf`/`oneOf`, path, header, and cookie decoders only test presence. `pattern`, `enum`, `format`, and numeric bounds are never applied (the `pattern` call at line 351 is query-only). A present parameter is not rejected.\n\n**5. File:** `req_resp_decoder.go`, line **332**. **Class:** Validation bypass via type confusion (CWE-20 / CWE-1287). The code quotes `if len(res) == 0 {`. An empty array is turned into a nil value, so “present but empty” becomes “absent.” Callers that treat nil as missing skip `minItems` and required-array checks, and `anyOf`/`oneOf` will not treat it as an array match.\n\n**6. File:** `req_resp_decoder.go`, line **273**. **Class:** Uncontrolled recursion / nil deref on the request path (CWE-674 / CWE-476). The code quotes `if len(schema.Value.AllOf) > 0 {`. `schema.Value` is dereferenced with no nil check (same on lines 287, 301, 321, 326). `allOf`/`anyOf`/`oneOf` recurse with no depth limit (lines 278, 289, 305). A cyclic or unresolved schema panics or overflows the stack while decoding a request.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "case_id": "GHSA-qj98-gp63-54xj",
+  "fixed": {
+    "fixed_clean": false,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 325,
+            "start": 325
+          },
+          {
+            "end": 324,
+            "start": 324
+          }
+        ],
+        "rationale": "The review acknowledges that /removeNode and /moveTablet are now guarded. Finding 3 still says the admin endpoints /assign and /state remain unauthenticated by default, because adminAuthHandler(false, ...) enforces auth only once a token or whitelist is configured. These are among the admin routes that were originally registered without auth. That is a claim of the same missing-auth flaw in the patched code, so it counts, though it is weaker than a claim about removeNode. Findings 1 and 2 are about debug routes, and findings 4 and 5 are unrelated issues.",
+        "reported_patched_vuln": true
+      },
+      "raw": "{\"reported_patched_vuln\":true,\"cited_ranges\":[{\"start\":325,\"end\":325},{\"start\":324,\"end\":324}],\"rationale\":\"The review acknowledges that /removeNode and /moveTablet are now guarded. Finding 3 still says the admin endpoints /assign and /state remain unauthenticated by default, because adminAuthHandler(false, ...) enforces auth only once a token or whitelist is configured. These are among the admin routes that were originally registered without auth. That is a claim of the same missing-auth flaw in the patched code, so it counts, though it is weaker than a claim about removeNode. Findings 1 and 2 are about debug routes, and findings 4 and 5 are unrelated issues.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 7.133,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 735,
+          "prompt_tokens": 7385,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 8120
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 87.306,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 7222,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 6627,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 520480000,
+        "num_sources_used": 0,
+        "prompt_tokens": 5222,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 5222
+        },
+        "total_tokens": 12444
+      }
+    },
+    "review_error": null,
+    "review_text": "Findings in `run.go`:\n\n1. **File:** `run.go` **Line:** 329 **Class:** Missing authentication (CWE-306) / sensitive data exposure (CWE-200)  \n   **Quote:** `baseMux.HandleFunc(\"/debug/jemalloc\", x.JemallocHandler)`  \n   Unlike `/state`, `/assign`, `/removeNode`, and `/moveTablet`, this debug route is registered with no `adminAuthHandler`. Anyone who can reach Zero’s HTTP port can hit it.\n\n2. **File:** `run.go` **Line:** 330 **Class:** Missing authentication (CWE-306); middleware bypass / information disclosure (CWE-200)  \n   **Quote:** `http.DefaultServeMux.Handle(\"/debug/z\", zpages.NewTracezHandler(zpages.NewSpanProcessor()))`  \n   This is mounted on `DefaultServeMux`, not `baseMux`. It is a longer match than `http.Handle(\"/\", ...)` at line 314, so it skips `audit.AuditRequestHttp` and has no admin auth. Tracez can expose internal request/trace data.\n\n3. **File:** `run.go` **Line:** 325 **Class:** Insecure default / missing authentication for a control-plane action (CWE-306, CWE-1188)  \n   **Quote:** `baseMux.Handle(\"/assign\", adminAuthHandler(false, http.HandlerFunc(st.assign)))`  \n   `false` is the non-strict mode described just above: auth runs only if a token or whitelist was configured. With empty `--security` defaults, `/assign` stays open. Same pattern on line 324 for `/state` (`adminAuthHandler(false, ...)`), which leaks cluster state. Destructive routes use `true`; this mutating route does not. With `bindall` (lines 276–277) the listener is `0.0.0.0`.\n\n4. **File:** `run.go` **Line:** 243 **Class:** Sensitive data written to logs (CWE-532)  \n   **Quote:** `glog.Infof(\"Setting Config to: %+v\", opts)`  \n   `opts` includes `tlsClientConfig` (line 239) and `audit` (line 240). `%+v` walks those structs, so TLS private key material (and any key bytes loaded into the audit config) can be written to the log.\n\n5. **File:** `run.go` **Lines:** 289–291 **Class:** Fail-open security control (CWE-636)  \n   **Quote:** `glog.Errorf(\"error while initializing audit logs %+v\", err)`  \n   If audit is configured and `InitAuditor` fails, the error is only logged and `run()` continues. Audit logging is skipped instead of failing closed.",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 302,
+            "start": 297
+          }
+        ],
+        "rationale": "Finding 2 describes the same flaw: /removeNode, /moveTablet, /assign and /state are registered with HandleFunc and no authentication middleware, so any caller who can reach the HTTP port can invoke destructive admin operations. It cites lines 297-302 and notes that the audit wrapper does not authenticate requests.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":297,\"end\":302}],\"rationale\":\"Finding 2 describes the same flaw: /removeNode, /moveTablet, /assign and /state are registered with HandleFunc and no authentication middleware, so any caller who can reach the HTTP port can invoke destructive admin operations. It cites lines 297-302 and notes that the audit wrapper does not authenticate requests.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.709,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 150,
+          "prompt_tokens": 6794,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 6944
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 73.515,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 5480,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 4788,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 405340000,
+        "num_sources_used": 0,
+        "prompt_tokens": 4691,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 4691
+        },
+        "total_tokens": 10171
+      }
+    },
+    "review_error": null,
+    "review_text": "Security review of `run.go` found several issues. Findings below cite the given line numbers.\n\n**1. Sensitive data written to logs**\n- File: `run.go`\n- Line: 232\n- Class: Insertion of sensitive information into log file (CWE-532)\n- Quote: `glog.Infof(\"Setting Config to: %+v\", opts)`\n\n`opts` includes `tlsClientConfig` (line 228) and `audit` (line 229). `%+v` prints exported fields, so a loaded client certificate’s `PrivateKey` (and other TLS material) can end up in logs.\n\n**2. Unauthenticated cluster-admin HTTP handlers**\n- File: `run.go`\n- Lines: 297–302\n- Class: Missing authentication for a critical function (CWE-306)\n- Quote: `baseMux.HandleFunc(\"/removeNode\", st.removeNode)`\n\n`/state`, `/removeNode`, `/moveTablet`, and `/assign` are registered with no auth middleware. The only gate is `disable-admin-http`, and the comment on line 296 says they are disabled only when that flag is explicitly true, so they are on by default. `/removeNode`, `/moveTablet`, and `/assign` mutate cluster membership and tablet assignment; `/state` exposes cluster state. `audit.AuditRequestHttp` (line 293) records requests; it does not authenticate them.\n\n**3. Admin API reachable on all interfaces**\n- File: `run.go`\n- Lines: 255–256\n- Class: Exposure of sensitive functionality to an unintended actor (CWE-668)\n- Quote: `addr = \"0.0.0.0\"`\n\nWith `bindall`, both the gRPC and HTTP listeners (lines 273–275) bind every interface. Combined with finding 2, cluster-admin routes are reachable by anyone who can reach that port. Nothing in this file requires TLS or authentication before those routes are served (`StartListenHttpAndHttps` on line 290).\n\n**4. Debug endpoints always registered**\n- File: `run.go`\n- Lines: 303–304\n- Class: Exposure of sensitive information (CWE-200); audit bypass\n- Quote: `http.DefaultServeMux.Handle(\"/debug/z\", zpages.NewTracezHandler(zpages.NewSpanProcessor()))`\n\n`/debug/jemalloc` and `/debug/z` are not covered by `disable-admin-http`. `/debug/z` is attached to `DefaultServeMux`, so it is not wrapped by `audit.AuditRequestHttp(baseMux)` on line 293. Tracez can expose recent spans (queries and internal RPCs).\n\n**5. Audit setup fails open**\n- File: `run.go`\n- Lines: 268–270\n- Class: Security control failure / insufficient logging (CWE-778)\n- Quote: `glog.Errorf(\"error while initializing audit logs %+v\", err)`\n\nIf audit is configured but `InitAuditor` fails, the error is logged and startup continues with no auditor. Later cluster changes are then unaudited.\n\nNo injection, path traversal, or credential-theft bugs showed up in this file. WAL creation uses `0700` (line 279), which is appropriate.",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

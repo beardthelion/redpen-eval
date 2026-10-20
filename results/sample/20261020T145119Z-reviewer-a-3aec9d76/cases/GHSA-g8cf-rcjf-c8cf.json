@@ -1,0 +1,126 @@
+{
+  "case_id": "GHSA-g8cf-rcjf-c8cf",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the missing cycle detection in decodeValue's allOf/anyOf/oneOf recursion. The patched code now guards this with decodeValueGuarded and a seen-slice check (lines 282-285). The review acknowledges the guard at line 282 and does not claim decodeValue is still vulnerable. Finding 9 flags unbounded recursion in buildResObj (additionalProperties/items) at line 1084, which is a different function and a different recursion path, so it does not count as this vulnerability. The other findings are unrelated issues.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the missing cycle detection in decodeValue's allOf/anyOf/oneOf recursion. The patched code now guards this with decodeValueGuarded and a seen-slice check (lines 282-285). The review acknowledges the guard at line 282 and does not claim decodeValue is still vulnerable. Finding 9 flags unbounded recursion in buildResObj (additionalProperties/items) at line 1084, which is a different function and a different recursion path, so it does not count as this vulnerability. The other findings are unrelated issues.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.54,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 216,
+          "prompt_tokens": 32133,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 32349
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 401.896,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 32416,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 31210,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 2418480000,
+        "num_sources_used": 0,
+        "prompt_tokens": 24540,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 24540
+        },
+        "total_tokens": 56956
+      }
+    },
+    "review_error": null,
+    "review_text": "The file has 9 security vulnerabilities.\n\n1. **CWE-409 (zip bomb / decompression bomb)**  \n   File: `req_resp_decoder.go`, line 1723  \n   Quote: `content = append(content, buffer[:n]...)`  \n   `ZipFileBodyDecoder` copies the archive with no size cap (`io.Copy` at line 1696) and appends every member’s uncompressed bytes with no cap on total size, file count, or compression ratio. A small archive can exhaust memory. The comment at line 1693 acknowledges this; there is still no limit. `bufferSize*len(zr.File)` (line 1707) also preallocates from the attacker-controlled entry count.\n\n2. **CWE-400 / CWE-770 (unbounded body read)**  \n   File: `req_resp_decoder.go`, line 1430  \n   Quote: `data, err := io.ReadAll(body)`  \n   The same pattern is at lines 1487 and 1685 (`io.ReadAll`), 1443 (`dec.Decode`), 1451 (`yaml.NewDecoder(body).Decode`), and 1749 (`r.Read()` in a loop). `MultipartBodyDecoder` (line 1570) also accepts unlimited parts. None of these paths enforce a maximum, so a large or slow body can exhaust memory unless the caller already wrapped the reader.\n\n3. **CWE-248 (unrecovered panic / DoS)**  \n   File: `req_resp_decoder.go`, line 955  \n   Quote: `m = m[key].(map[string]any)`  \n   `deepSet` type-asserts an intermediate node to `map[string]any`. `makeObject` (line 971) calls it with attacker-controlled deepObject keys. `obj[a]=1` and `obj[a][b]=2` put both a scalar and a nested path in `props`. If the scalar is applied first, the assertion panics. Map iteration makes that likely, and extra conflicting keys make it reliable. There is no `recover`.\n\n4. **CWE-400 (allocation amplification)**  \n   File: `req_resp_decoder.go`, line 1016  \n   Quote: `if gap := max + 1 - len(m); gap > maxSliceMapToSliceGap {`  \n   The cap is 10000 (line 990) and is per array, not global. One index of 10000 still builds a ~10001-element slice (line 1019). Many deepObject arrays in an unbounded body multiply that cost (on the order of 10^3–10^4× versus input size).\n\n5. **CWE-20 (NaN / Inf accepted as numbers)**  \n   File: `req_resp_decoder.go`, line 1233  \n   Quote: `v, err := strconv.ParseFloat(raw, 64)`  \n   `ParseFloat` accepts `NaN`, `Inf`, and `+Inf` / `-Inf` and the error check does not reject them. Those values are returned as `float64`. `NaN` is unordered, so later `<` / `>` minimum and maximum checks do not reject it. YAML `.nan` / `.inf` (line 1451) is a second source of the same values.\n\n6. **CWE-20 (non-decimal integer parsing)**  \n   File: `req_resp_decoder.go`, line 1227  \n   Quote: `v, err := strconv.ParseInt(raw, 0, 64)`  \n   Base 0 (also line 1221) accepts `0x`, `0b`, and leading-zero octal. `010` becomes 8 and `0x10` becomes 16. A decimal-only check on the raw string and this decoder will disagree.\n\n7. **CWE-235 (duplicate parameter values not fully validated)**  \n   File: `req_resp_decoder.go`, line 538  \n   Quote: `raw := values[0]`  \n   Query decoding validates only the first non-empty value (lines 538–546) and leaves the other values on the request. Header decoding validates only `raw[0]` (line 790). A handler or proxy that uses the last value, or all values, can see input this filter never checked.\n\n8. **CWE-1287 (oneOf exclusivity not enforced)**  \n   File: `req_resp_decoder.go`, line 326  \n   Quote: `if isMatched >= 1 {`  \n   Decode errors are discarded (line 319), and any positive match count succeeds. `parseValue` (line 654) requires exactly one match. A value that matches more than one branch is still returned (the last match), so oneOf exclusivity is not applied on this path.\n\n9. **CWE-674 (unbounded recursion) and CWE-362 (data race)**  \n   File: `req_resp_decoder.go`, line 1084  \n   Quote: `r, err := buildResObj(params, mapKeys, k, additPropsSchema)`  \n   `decodeValueGuarded` stops on a repeated schema (line 282). `buildResObj` does not. With a recursive `additionalProperties` / `items` schema, deepObject nesting follows attacker-controlled depth and can exhaust the stack. Separately, `bodyDecoders` is a plain map written at line 1282 and read on every body at line 1391 with no lock. A concurrent `RegisterBodyDecoder` / `UnregisterBodyDecoder` is a fatal concurrent map access and kills the process.",
+    "status": "scored"
+  },
+  "guard_class": "size-cap",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The review never mentions unbounded recursion in decodeValue through allOf/anyOf/oneOf subschemas, nor missing cycle detection in circular schemas that exhaust the stack. Its findings cover deepSet panics, delimiter injection, zip bombs, integer parsing, validation bypasses, unbounded reads, and a map race, all of which are different weaknesses.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The review never mentions unbounded recursion in decodeValue through allOf/anyOf/oneOf subschemas, nor missing cycle detection in circular schemas that exhaust the stack. Its findings cover deepSet panics, delimiter injection, zip bombs, integer parsing, validation bypasses, unbounded reads, and a map race, all of which are different weaknesses.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.978,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 155,
+          "prompt_tokens": 33001,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 33156
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 354.005,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 28530,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 26537,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 2181680000,
+        "num_sources_used": 0,
+        "prompt_tokens": 24358,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 24358
+        },
+        "total_tokens": 52888
+      }
+    },
+    "review_error": null,
+    "review_text": "Security review of `req_resp_decoder.go`. Several issues are exploitable from request data on normal OpenAPI query/body decoding paths.\n\n### 1. Denial of service (panic) — conflicting object keys\n**File:** `req_resp_decoder.go`  \n**Line:** 945  \n**Class:** Uncaught panic / denial of service (CWE-248)\n\n```945:945:req_resp_decoder.go\n\t\tm = m[key].(map[string]any)\n```\n\n`deepSet` assumes every intermediate node is a `map[string]any`. `makeObject` (line 961) calls it for every property before schema filtering. Exploded form decoding copies all query keys (line 686), and keys are split on `\\x1F` (line 955). A request such as `?a=x&a%1Fb=y` against a default exploded form object parameter stores both `\"a\"` (string) and `\"a\\x1Fb\"` (nested). When the string is inserted first, the type assertion panics. Map iteration order makes this intermittent, but it is attacker-reachable. `net/http` recovers handler panics per request; repeated hits still drop those requests.\n\n### 2. Parameter path injection — reserved delimiter in keys\n**File:** `req_resp_decoder.go`  \n**Lines:** 664, 719, 955  \n**Class:** Input validation / parameter pollution (CWE-20)\n\n```664:664:req_resp_decoder.go\n\turlDecoderDelimiter = \"\\x1F\" // should not conflict with URL characters\n```\n\n```719:719:req_resp_decoder.go\n\t\t\t\t\tprops[strings.Join(kk, urlDecoderDelimiter)] = strings.Join(values, urlDecoderDelimiter)\n```\n\n```955:955:req_resp_decoder.go\n\t\tkeys := strings.Split(kk, urlDecoderDelimiter)\n```\n\n`\\x1F` is rejected in values (line 956) but not in keys. After `url.ParseQuery`, `%1F` is a real character in the key. `param[a][b]` and `param[a%1Fb]` become the same path, and a raw key `a%1Fb` is treated as nested `a` / `b`. That overwrites nested properties nondeterministically and is the same sink as finding 1.\n\n### 3. Zip bomb\n**File:** `req_resp_decoder.go`  \n**Lines:** 1686, 1713  \n**Class:** Uncontrolled resource consumption / zip bomb (CWE-409, CWE-400)\n\n```1686:1686:req_resp_decoder.go\n\tsize, err := io.Copy(buff, body)\n```\n\n```1713:1713:req_resp_decoder.go\n\t\t\t\t\tcontent = append(content, buffer[:n]...)\n```\n\n`ZipFileBodyDecoder` buffers the whole archive, then inflates every entry with no cap on uncompressed size, compression ratio, or file count. A small body can expand without bound. `http.MaxBytesReader` only limits the compressed size, so it does not stop this. The comment on line 1683 acknowledges the issue; there is still no guard. Line 1697 (`bufferSize*len(zr.File)`) also allocates from the central-directory file count before any byte is inflated.\n\n### 4. Integer parsing confusion\n**File:** `req_resp_decoder.go`  \n**Lines:** 1211, 1217  \n**Class:** Improper input validation (CWE-20)\n\n```1211:1211:req_resp_decoder.go\n\t\t\tv, err := strconv.ParseInt(raw, 0, 32)\n```\n\n```1217:1217:req_resp_decoder.go\n\t\tv, err := strconv.ParseInt(raw, 0, 64)\n```\n\nBase `0` accepts `0x` / `0b` / leading-zero octal. OpenAPI integers are decimal. `010` becomes 8, `0x10` becomes 16. A value can pass `minimum`/`maximum` here and mean something else in a handler or backend that parses decimal (or the reverse). Same function accepts `1`/`t`/`T` as boolean via `strconv.ParseBool` (line 1229), which is looser than JSON `true`/`false`.\n\n### 5. Validation bypass — empty or extra query values ignored\n**File:** `req_resp_decoder.go`  \n**Lines:** 686, 567–570  \n**Class:** Validation bypass (CWE-20)\n\n```686:686:req_resp_decoder.go\n\t\t\t\t\tprops[key] = values[0]\n```\n\n```567:570:req_resp_decoder.go\n\t\tif strings.Contains(values[0], delim) {\n\t\t\tvalues = strings.Split(values[0], delim)\n\t\t} else {\n\t\t\tvalues = values[:1]\n\t\t}\n```\n\n`DecodePrimitive` (lines 528–535) skips an empty leading value so it cannot hide a later one (#1230). Object decoding still keeps only `values[0]`, and non-exploded arrays keep only the first query value. This library validates the decoded value, then the handler typically reads the original `*http.Request`. `?role=&role=admin` (object) or `?ids=1&ids=2,3` (non-exploded array) can validate as empty/absent/`[1]` while the handler still sees the later values.\n\n### 6. Validation bypass — one empty array item drops the array\n**File:** `req_resp_decoder.go`  \n**Lines:** 1197, 594–595, 1184–1185  \n**Class:** Validation bypass (CWE-20)\n\n```1197:1198:req_resp_decoder.go\n\t\tif raw == \"\" && typ != \"string\" {\n\t\t\treturn nil, nil\n```\n\n```594:595:req_resp_decoder.go\n\t\tif item == nil {\n\t\t\treturn nil, nil\n```\n\n```1184:1185:req_resp_decoder.go\n\t\tif item == nil {\n\t\t\treturn nil, nil\n```\n\nAn empty element of a non-string array is not an error. It makes `parseArray` return `(nil, nil)`, discarding sibling items. `?ids=1,,999` or `?ids=1&ids=&ids=999` validates as “parameter absent” if the parameter is not required, while the raw query still contains the other values.\n\n### 7. Unbounded body reads (and YAML expansion)\n**File:** `req_resp_decoder.go`  \n**Lines:** 1420, 1441, 1477, 1675  \n**Class:** Uncontrolled resource consumption (CWE-400, CWE-776)\n\n```1420:1420:req_resp_decoder.go\n\tdata, err := io.ReadAll(body)\n```\n\n```1441:1441:req_resp_decoder.go\n\tif err := yaml.NewDecoder(body).Decode(&value); err != nil {\n```\n\n```1477:1477:req_resp_decoder.go\n\tb, err := io.ReadAll(body)\n```\n\n```1675:1675:req_resp_decoder.go\n\tdata, err := io.ReadAll(body)\n```\n\n`PlainBodyDecoder`, `UrlencodedBodyDecoder`, and `FileBodyDecoder` slurp the reader with no limit. `YamlBodyDecoder` also sets no size or alias limit; a small YAML document can expand far past the input size if `yaml3` does not cap anchors. `CsvBodyDecoder` (line 1739) has the same unbounded-read property. Callers can wrap some of these with `MaxBytesReader`; the YAML alias case and the zip decoder above still amplify inside that cap.\n\n### 8. Process-fatal map race\n**File:** `req_resp_decoder.go`  \n**Lines:** 1272, 1381  \n**Class:** Race condition (CWE-362)\n\n```1272:1272:req_resp_decoder.go\n\tbodyDecoders[contentType] = decoder\n```\n\n```1381:1381:req_resp_decoder.go\n\tdecoder, ok := bodyDecoders[mediaType]\n```\n\n`bodyDecoders` is a plain map. Registration writes it; every body decode reads it. There is no lock. In Go, a concurrent map read/write is a fatal error (`concurrent map read and write`), not a recoverable panic, so it kills the process. The comments say registration is not thread-safe, but the request path is also unsynchronized, so one late `RegisterBodyDecoder` during traffic is enough.\n\n---\n\nNot reported as vulnerabilities: the sparse-array cap in `sliceMapToSlice` (lines 1006–1008) can overflow `max+1` when the index is `MaxInt`, but the wrapped gap is still far above `maxSliceMapToSliceGap`, so that path fails closed. Go’s `regexp` engine is RE2, so `deepObjectBracketRE` is not ReDoS. `ZipFileBodyDecoder` does not write entries to disk, so there is no zip-slip.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}

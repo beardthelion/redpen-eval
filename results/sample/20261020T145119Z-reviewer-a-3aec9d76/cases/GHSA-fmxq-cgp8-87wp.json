@@ -1,0 +1,131 @@
+{
+  "case_id": "GHSA-fmxq-cgp8-87wp",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability is the missing AppProject destination and group/kind enforcement when executeHooks creates hooks. The patch adds validateSyncPermissions at line 162. The review does not claim that check is missing for newly created hooks. Finding 2 says the check is skipped for hooks that already exist in runningHooks, which is a different issue from the original flaw. Finding 1 is about AlreadyExists handling, and finding 3 is about an unpinned revision. None of the three reports the fixed vulnerability as still present.\n",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability is the missing AppProject destination and group/kind enforcement when executeHooks creates hooks. The patch adds validateSyncPermissions at line 162. The review does not claim that check is missing for newly created hooks. Finding 2 says the check is skipped for hooks that already exist in runningHooks, which is a different issue from the original flaw. Finding 1 is about AlreadyExists handling, and finding 3 is about an unpinned revision. None of the three reports the fixed vulnerability as still present.\\n\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.719,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 207,
+          "prompt_tokens": 7054,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 7261
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 359.226,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 23775,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 23357,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 1510880000,
+        "num_sources_used": 0,
+        "prompt_tokens": 5083,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 5083
+        },
+        "total_tokens": 28858
+      }
+    },
+    "review_error": null,
+    "review_text": "The code has three security vulnerabilities.\n\n**1. hook.go:185 — Protection mechanism failure / TOCTOU (CWE-693, CWE-367)**\nQuote: `logCtx.Warnf(\"Hook resource %s already exists, skipping\", key)`\n\n`CreateResource` conflict is treated as success. The hook is not added to any set that is health-checked. If nothing else is progressing or failed, execution falls through to `return true, nil` at line 257, so pre-delete hooks are reported complete without running. Informer lag is enough: create succeeds, the next reconcile gets `AlreadyExists` before the object is in `liveObjs`, and the gate opens. A name collision with a non-hook object does the same thing. Return not-done on conflict, or GET the live object and wait until it is actually healthy.\n\n**2. hook.go:153 — Missing authorization on existing hooks (CWE-862)**\nQuote: `if _, alreadyExists := runningHooks[kube.GetResourceKey(obj)]; alreadyExists {`\n\n`validateSyncPermissions` runs only for hooks that are not already in `runningHooks` (line 162). A live object with the same resource key skips that check and is never updated to the Git spec. Tightened AppProject namespace or group/kind rules therefore do not apply to hooks already in the cluster, and a drifted or injected hook remains the gate. Re-check permissions for running hooks and do not treat an unpermitted object as a successful hook.\n\n**3. hook.go:115 — Unpinned revision (CWE-829)**\nQuote: `revisions = append(revisions, src.TargetRevision)`\n\nHooks are rendered from `spec.targetRevision`, which is often a moving branch, not the resolved revision last synced. Delete then creates workloads from whatever the ref currently points at, with the destination cluster credentials, outside the sync operation’s pinned SHA. Use the reconciled revisions (and the same signature verification as sync) before `CreateResource`.",
+    "status": "scored"
+  },
+  "guard_class": "auth-check",
+  "pair_credit": 1.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [
+          {
+            "end": 157,
+            "start": 157
+          }
+        ],
+        "rationale": "The finding at hook.go:157 describes this vulnerability. It says CreateResource creates the hook with the controller config and no project destination, namespace, or cluster-resource allowlist check, so a repo manifest can place objects outside the app destination. That matches the missing AppProject destination-namespace and group/kind enforcement in executeHooks. The finding at line 133 makes a similar point about namespace, but the review's creation-time finding is the clearest match, so only line 157 is cited.",
+        "verdict_class_match": true
+      },
+      "raw": "{\"verdict_class_match\":true,\"cited_ranges\":[{\"start\":157,\"end\":157}],\"rationale\":\"The finding at hook.go:157 describes this vulnerability. It says CreateResource creates the hook with the controller config and no project destination, namespace, or cluster-resource allowlist check, so a repo manifest can place objects outside the app destination. That matches the missing AppProject destination-namespace and group/kind enforcement in executeHooks. The finding at line 133 makes a similar point about namespace, but the review's creation-time finding is the clearest match, so only line 157 is cited.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 3.821,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 198,
+          "prompt_tokens": 6411,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 6609
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": true,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 98.062,
+      "model": "grok-4.7",
+      "system_fingerprint": "fp_c60958d81f66f847",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 6807,
+        "completion_tokens_details": {
+          "accepted_prediction_tokens": 0,
+          "audio_tokens": 0,
+          "reasoning_tokens": 6170,
+          "rejected_prediction_tokens": 0
+        },
+        "cost_in_usd_ticks": 478520000,
+        "num_sources_used": 0,
+        "prompt_tokens": 4369,
+        "prompt_tokens_details": {
+          "audio_tokens": 0,
+          "cached_tokens": 1152,
+          "image_tokens": 0,
+          "text_tokens": 4369
+        },
+        "total_tokens": 11176
+      }
+    },
+    "review_error": null,
+    "review_text": "**hook.go:133** — Missing authorization (namespace boundary bypass, CWE-862). An empty namespace is defaulted to the app destination, but any manifest-supplied namespace is left unchanged and never checked against the destination or AppProject allowlist.\n\n```133:134:hook.go\n\t\tif obj.GetNamespace() == \"\" {\n\t\t\tobj.SetNamespace(app.Spec.Destination.Namespace)\n```\n\n**hook.go:157** — Missing authorization (CWE-862). The hook object is created with the controller REST config with no project destination, namespace, or cluster-resource allowlist check, so a repo manifest can place namespaced or cluster-scoped objects outside the app destination.\n\n```157:157:hook.go\n\t\t_, err = ctrl.kubectl.CreateResource(context.Background(), config, obj.GroupVersionKind(), obj.GetName(), obj.GetNamespace(), obj, metav1.CreateOptions{})\n```\n\n**hook.go:184** — Fail-open security check (CWE-636). If no health assessment exists, the hook is treated as healthy, so a pre-delete hook of an unchecked kind can be reported complete without evidence it ran.\n\n```184:194:hook.go\n\t\tif hookHealth == nil {\n\t\t\tlogCtx.WithFields(log.Fields{\n\t\t\t\t\"group\":     obj.GroupVersionKind().Group,\n\t\t\t\t\"version\":   obj.GroupVersionKind().Version,\n\t\t\t\t\"kind\":      obj.GetKind(),\n\t\t\t\t\"name\":      obj.GetName(),\n\t\t\t\t\"namespace\": obj.GetNamespace(),\n\t\t\t}).Info(\"No health check defined for resource, considering it healthy\")\n\t\t\thookHealth = &health.HealthStatus{\n\t\t\t\tStatus: health.HealthStatusHealthy,\n\t\t\t}\n\t\t}\n```\n\n**hook.go:246** — Fail-open security check (CWE-636). The same nil-health-as-healthy default drives cleanup policy, so `HookSucceeded` deletion can run on resources that were never actually assessed.\n\n```246:249:hook.go\n\t\tif hookHealth == nil {\n\t\t\thookHealth = &health.HealthStatus{\n\t\t\t\tStatus: health.HealthStatusHealthy,\n\t\t\t}\n\t\t}\n```\n\n**hook.go:209** — Missing authorization (CWE-862). Failed-hook deletion uses kind, name, and namespace only, with no project/destination check and no UID or resourceVersion precondition.\n\n```209:209:hook.go\n\t\t\terr = ctrl.kubectl.DeleteResource(context.Background(), config, obj.GroupVersionKind(), obj.GetName(), obj.GetNamespace(), metav1.DeleteOptions{})\n```\n\n**hook.go:282** — Missing authorization (CWE-862). Cleanup deletion has the same unbound scope: any live object classified as this hook type is deleted in whatever namespace it already has.\n\n```282:282:hook.go\n\t\t\terr = ctrl.kubectl.DeleteResource(context.Background(), config, obj.GroupVersionKind(), obj.GetName(), obj.GetNamespace(), metav1.DeleteOptions{})\n```",
+    "status": "scored",
+    "verdict": "HIT"
+  }
+}

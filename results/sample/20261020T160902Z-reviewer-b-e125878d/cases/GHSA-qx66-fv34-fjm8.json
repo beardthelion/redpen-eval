@@ -1,0 +1,114 @@
+{
+  "case_id": "GHSA-qx66-fv34-fjm8",
+  "fixed": {
+    "fixed_clean": true,
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The patched vulnerability was passing the raw parsed payload to the action instead of an allowlisted {data, context, method} object. In this code the action is already called with an allowlisted object at lines 148, 159 and 168. The review reports CSRF and error information exposure, which are unrelated issues. It cites line 148 for CSRF, not for raw payload passing, so it does not claim the patched issue is still present.",
+        "reported_patched_vuln": false
+      },
+      "raw": "{\"reported_patched_vuln\":false,\"cited_ranges\":[],\"rationale\":\"The patched vulnerability was passing the raw parsed payload to the action instead of an allowlisted {data, context, method} object. In this code the action is already called with an allowlisted object at lines 148, 159 and 168. The review reports CSRF and error information exposure, which are unrelated issues. It cites line 148 for CSRF, not for raw payload passing, so it does not claim the patched issue is still present.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 2.444,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 163,
+          "prompt_tokens": 4084,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4247
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 73.588,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 7316,
+        "completion_tokens_details": {
+          "reasoning_tokens": 6849
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2221,
+        "total_tokens": 9537
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is the review of the code for security vulnerabilities:\n\n### 1. Cross-Site Request Forgery (CSRF)\n- **File:** server-functions-handler.ts\n- **Line:** 148 (also affects lines 159 and 168)\n- **Vulnerability Class:** Cross-Site Request Forgery (CSRF)\n- **Quote:** `res = await action(params)`\n- **Description:** The handler processes state-changing requests (like POST) and accepts simple content types such as `multipart/form-data` and `application/x-www-form-urlencoded` without enforcing CSRF protection. While the code checks for a custom header (`const isServerFn = request.headers.get('x-tsr-serverFn') === 'true'` on line 97), it only uses this boolean to format the response and does not reject requests that lack it. An attacker can host a malicious HTML form that submits a cross-origin POST request to this endpoint. Because the browser automatically includes cookies, the server action will execute in the context of the authenticated user. \n\n### 2. Information Exposure / Sensitive Data Leak\n- **File:** server-functions-handler.ts\n- **Line:** 215\n- **Vulnerability Class:** Information Exposure\n- **Quote:** \n```typescript\n   215      const serializedError = JSON.stringify(\n   216        await toCrossJSONAsync(error, {\n   217          refs: new Map(),\n   218          plugins: serovalPlugins,\n   219        }),\n   220      )\n```\n- **Description:** When a server function throws an unhandled exception, the catch block catches the raw `error` object and unconditionally serializes it using `toCrossJSONAsync` to send back to the client. In a production environment, serializing raw Error objects typically leaks sensitive internal information to the end user, such as stack traces, database connection strings, SQL queries, or internal file paths. A check should be implemented to only send detailed error information when `process.env.NODE_ENV === 'development'`, and return a generic error message otherwise.",
+    "status": "scored"
+  },
+  "guard_class": "input-validation",
+  "pair_credit": 0.0,
+  "vuln": {
+    "judge": {
+      "error": null,
+      "parsed": {
+        "cited_ranges": [],
+        "rationale": "The known vulnerability is that the raw parsed payload is passed to the action (lines 161 and 168) instead of an allowlisted {data, context, method} object, so attacker-controlled keys reach the server function. The review reports CSRF, DoS through unbounded payload size, and error information exposure. None of these describes the missing allowlist on the payload, so no finding matches.",
+        "verdict_class_match": false
+      },
+      "raw": "{\"verdict_class_match\":false,\"cited_ranges\":[],\"rationale\":\"The known vulnerability is that the raw parsed payload is passed to the action (lines 161 and 168) instead of an allowlisted {data, context, method} object, so attacker-controlled keys reach the server function. The review reports CSRF, DoS through unbounded payload size, and error information exposure. None of these describes the missing allowlist on the payload, so no finding matches.\"}",
+      "repaired": false,
+      "response_meta": {
+        "finish_reason": "stop",
+        "latency_s": 1.905,
+        "model": "claude-sonnet-5-5",
+        "system_fingerprint": null,
+        "truncated": false,
+        "usage": {
+          "completion_tokens": 150,
+          "prompt_tokens": 4348,
+          "prompt_tokens_details": {
+            "audio_tokens": null,
+            "cached_tokens": 0
+          },
+          "total_tokens": 4498
+        }
+      },
+      "status": "ok",
+      "tier": "json_schema"
+    },
+    "location_match": false,
+    "response_meta": {
+      "finish_reason": "stop",
+      "latency_s": 83.174,
+      "model": "google/gemini-3.1-pro-preview",
+      "system_fingerprint": "",
+      "truncated": false,
+      "usage": {
+        "completion_tokens": 11035,
+        "completion_tokens_details": {
+          "reasoning_tokens": 10322
+        },
+        "extra_properties": {
+          "google": {
+            "traffic_type": "ON_DEMAND"
+          }
+        },
+        "prompt_tokens": 2153,
+        "total_tokens": 13188
+      }
+    },
+    "review_error": null,
+    "review_text": "Here is a review of the code for security vulnerabilities:\n\n### 1. Cross-Site Request Forgery (CSRF)\n**File:** `server-functions-handler.ts`\n**Line:** 177\n**Vulnerability Class:** Cross-Site Request Forgery (CSRF)\n\n**Quote:**\n```typescript\n   177      if (!isServerFn) {\n   178        return unwrapped\n   179      }\n```\n**Description:** \nThe handler executes server actions for POST requests without verifying the origin (e.g., checking the `Origin` or `Referer` headers against the host) or strictly enforcing a custom CSRF-prevention header. While the code checks for the `x-tsr-serverFn` header on line 97, it only uses this boolean to determine how to format the response (line 177). It does not abort the request if the header is missing. This allows an attacker to execute state-changing server functions via cross-origin simple requests (e.g., using an invisible `<form method=\"POST\" enctype=\"text/plain\">` submitted via JavaScript on a malicious site).\n\n### 2. Denial of Service (DoS) via Unrestricted Payload Size\n**File:** `server-functions-handler.ts`\n**Line:** 164 (and 119)\n**Vulnerability Class:** Denial of Service (DoS) / Unrestricted Resource Consumption\n\n**Quote:**\n```typescript\n   164          ? fromJSON(await request.json(), { plugins: serovalPlugins })\n```\n*(Also applies to line 119: `const formData = await request.formData()`)*\n\n**Description:** \nThe handler reads the entire JSON or FormData request body into memory using `await request.json()` and `await request.formData()` without enforcing any size limits. While the developer explicitly added a `MAX_PAYLOAD_SIZE` check for `GET` requests (line 153) to prevent DoS, `POST` requests lack this protection entirely. An attacker can send an excessively large payload, causing the server to consume all available memory, block the event loop during parsing, and potentially crash (OOM).\n\n### 3. Information Exposure via Error Serialization\n**File:** `server-functions-handler.ts`\n**Line:** 206\n**Vulnerability Class:** Information Exposure / Sensitive Data Leak\n\n**Quote:**\n```typescript\n   206      const serializedError = JSON.stringify(\n   207        await toCrossJSONAsync(error, {\n   208          refs: new Map(),\n   209          plugins: serovalPlugins,\n   210        }),\n   211      )\n```\n**Description:** \nThe global `catch` block catches all errors thrown during the execution of the server function (or during payload parsing) and serializes the raw error object to be sent back to the client. There is no check to strip sensitive information or obscure errors based on the environment (e.g., `process.env.NODE_ENV === 'production'`). In a production environment, this can leak highly sensitive internal information to an attacker, such as stack traces, database query failures, internal file paths, or third-party API keys that might be attached to the error object.",
+    "status": "scored",
+    "verdict": "MISS"
+  }
+}
