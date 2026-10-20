@@ -442,3 +442,50 @@ def test_must_not_key_prefix_leaks_when_echo_straddles_snippet_cut(key):
         chat_completion(entry(), [{"role": "user", "content": "hi"}], transport=server.transport)
     assert KEY[:6] not in err.value.message
     assert "SECRET" not in err.value.message
+
+
+# ------------------------------------------------------------ non-string content
+
+LIST_CONTENT = [{"type": "text", "text": "x"}]
+
+
+@pytest.mark.parametrize("content", [LIST_CONTENT, {"text": "x"}, 42, True])
+def test_must_not_non_string_content_is_http_error(key, content):
+    srv = Server((200, completion(content)))
+    with pytest.raises(ReviewerError) as err:
+        chat_completion(entry(), MSGS, transport=srv.transport)
+    assert err.value.kind == "http_error"
+    assert err.value.message == "invalid response body: content is not a string"
+
+
+@pytest.mark.parametrize("bad_side", ["reviewer", "judge"])
+def test_must_not_list_content_abort_full_run(tmp_path, monkeypatch, bad_side):
+    monkeypatch.setenv("REDPEN_TEST_KEY", KEY)
+    ds = make_dataset(tmp_path, [{"case_id": "GHSA-aaaa-bbbb-cccc"}])
+    cfg = {"default_judge": "llm", "reviewers": {"oa": entry()},
+           "judges": {"llm": entry(model="judge-model", structured_output="json_object")}}
+    cfg_path = tmp_path / "reviewers.yaml"
+    cfg_path.write_text(yaml.safe_dump(cfg))
+    bad = (200, completion(LIST_CONTENT))
+    rsrv = Server(bad if bad_side == "reviewer" else (200, completion("nothing here")))
+    jsrv = Server(bad if bad_side == "judge" else _grade)
+    monkeypatch.setattr(runner, "make_reviewer",
+                        lambda name, config: OpenAICompatReviewer(name, config.reviewers[name],
+                                                                  transport=rsrv.transport))
+    monkeypatch.setattr(runner, "make_judge_backend",
+                        lambda name, config: OpenAICompatJudgeBackend(config.judges[name],
+                                                                      transport=jsrv.transport))
+    results = tmp_path / "results"
+    code = main(["run", "--reviewer", "oa", "--judge", "llm", "--dataset", str(ds),
+                 "--config", str(cfg_path), "--results-dir", str(results), "--concurrency", "1"])
+    assert code == 1
+    (path,) = results.glob("*/cases/*.json")
+    rec = json.loads(path.read_text())
+    for side in ("vuln", "fixed"):
+        if bad_side == "reviewer":
+            assert rec[side]["status"] == "reviewer_error"
+            assert rec[side]["review_error"] == {
+                "kind": "http_error", "message": "invalid response body: content is not a string"}
+        else:
+            assert rec[side]["status"] == "judge_error"
+            assert "content is not a string" in rec[side]["judge"]["error"]

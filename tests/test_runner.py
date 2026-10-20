@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -263,6 +264,62 @@ def test_resume_refuses_changed_reviewer_config(env, tmp_path, capsys):
     capsys.readouterr()
     assert run(ds, cfg, results, "--resume", rd.name) == 2
     assert "cannot resume: reviewer config changed" in capsys.readouterr().err
+
+
+def _change_judge(rd, ds, tmp_path):
+    cfg = base_config()
+    cfg["judges"]["mock"]["repair_cases"] = ["GHSA-j3hg-cccc-dddd"]
+    write_config(tmp_path, cfg)
+
+
+def _change_dataset(rd, ds, tmp_path):
+    shutil.rmtree(ds)
+    changed = [dict(c) for c in CASES]
+    changed[0]["description"] = "a different case description"
+    make_dataset(tmp_path, changed)
+
+
+def _change_prompts(rd, ds, tmp_path):
+    meta = load(rd / "meta.json")
+    meta["prompts"]["review_sha256"] = "0" * 64
+    (rd / "meta.json").write_text(json.dumps(meta))
+
+
+@pytest.mark.parametrize("field, change", [
+    ("judge config", _change_judge),
+    ("dataset", _change_dataset),
+    ("prompts", _change_prompts),
+])
+def test_resume_refuses_changed_run_identity(env, tmp_path, capsys, field, change):
+    ds, cfg, results = env
+    assert run(ds, cfg, results) == 0
+    rd = only_run(results)
+    (rd / "cases" / "GHSA-23vx-aaaa-bbbb.json").unlink()
+    before = sorted(p.name for p in (rd / "cases").iterdir())
+    change(rd, ds, tmp_path)
+    capsys.readouterr()
+    assert run(ds, cfg, results, "--resume", rd.name) == 2
+    assert f"cannot resume: {field} changed" in capsys.readouterr().err
+    assert sorted(p.name for p in (rd / "cases").iterdir()) == before
+    assert run_dirs(results) == [rd]
+
+
+@pytest.mark.parametrize("damage", ["missing", "unreadable"])
+def test_resume_refuses_missing_or_unreadable_meta(env, capsys, damage):
+    ds, cfg, results = env
+    assert run(ds, cfg, results) == 0
+    rd = only_run(results)
+    (rd / "cases" / "GHSA-23vx-aaaa-bbbb.json").unlink()
+    before = sorted(p.name for p in (rd / "cases").iterdir())
+    if damage == "missing":
+        (rd / "meta.json").unlink()
+    else:
+        (rd / "meta.json").write_text("{not json")
+    capsys.readouterr()
+    assert run(ds, cfg, results, "--resume", rd.name) == 2
+    assert f"cannot resume {rd.name}: " in capsys.readouterr().err
+    assert sorted(p.name for p in (rd / "cases").iterdir()) == before
+    assert run_dirs(results) == [rd]
 
 
 def test_resume_refuses_different_cases(env, capsys):

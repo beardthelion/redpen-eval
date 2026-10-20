@@ -75,12 +75,16 @@ def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | 
     try:
         data = resp.json()
         choice = data["choices"][0]
-        text = choice["message"].get("content") or ""
+        text = choice["message"].get("content")
         finish = choice.get("finish_reason")
     except (ValueError, KeyError, IndexError, TypeError, AttributeError):
         raise _error("http_error", f"invalid response body: {_snippet(resp, key)}", key) from None
     if finish == "content_filter":
         raise ReviewerError("refusal", "finish_reason content_filter")
+    if text is None:
+        text = ""
+    elif not isinstance(text, str):
+        raise _error("http_error", "invalid response body: content is not a string", key)
     meta = {"model": data.get("model"), "system_fingerprint": data.get("system_fingerprint"),
             "finish_reason": finish, "usage": data.get("usage"), "latency_s": round(latency, 3),
             "truncated": finish == "length"}
