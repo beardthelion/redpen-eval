@@ -14,7 +14,7 @@ reviewers:
     max_tokens: 2048
     max_tokens_param: max_tokens   # or max_completion_tokens
     seed: 1
-    timeout_s: 120
+    timeout_s: 900
     max_retries: 2
     retry_backoff_s: 1.0
   reviewer-b:
@@ -26,7 +26,7 @@ reviewers:
     max_tokens: 2048
     max_tokens_param: max_tokens   # or max_completion_tokens
     seed: 1
-    timeout_s: 120
+    timeout_s: 900
     max_retries: 2
     retry_backoff_s: 1.0
 judges:

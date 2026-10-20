@@ -108,3 +108,24 @@ def test_judge_templates_carry_nonce_delimiters(name):
     for tag in ("<code-{nonce}>", "</code-{nonce}>", "<review-{nonce}>", "</review-{nonce}>"):
         assert tag in text
     assert "{guard_class}" in text and "{vuln_description}" in text
+
+
+# Keywords every strict structured-output provider accepts. Anthropic's rejects
+# "minimum" on integers with a 400, so numeric bounds live in judge._validate.
+PORTABLE_SCHEMA_KEYS = {"type", "properties", "required", "additionalProperties", "items"}
+
+
+def _schema_keys(node):
+    if isinstance(node, dict):
+        yield from node
+        for k, v in node.items():
+            if k == "properties":
+                for sub in v.values():
+                    yield from _schema_keys(sub)
+            elif k == "items":
+                yield from _schema_keys(v)
+
+
+@pytest.mark.parametrize("name", ["JUDGE_VULN_SCHEMA", "JUDGE_FIXED_SCHEMA"])
+def test_judge_schemas_use_only_portable_keywords(name):
+    assert set(_schema_keys(getattr(prompts, name))) <= PORTABLE_SCHEMA_KEYS

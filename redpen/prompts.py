@@ -48,12 +48,13 @@ def render_review_prompt(case, side: str) -> str:
 
 JUDGE_PROMPT_VERSION = "judge-v1"
 
+# Bounds (start >= 1, end >= start) are checked in judge._validate: some strict
+# structured-output providers reject "minimum" in the schema.
 _RANGES_SCHEMA = {
     "type": "array",
     "items": {
         "type": "object",
-        "properties": {"start": {"type": "integer", "minimum": 1},
-                       "end": {"type": "integer", "minimum": 1}},
+        "properties": {"start": {"type": "integer"}, "end": {"type": "integer"}},
         "required": ["start", "end"],
         "additionalProperties": False,
     },
