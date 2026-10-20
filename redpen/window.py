@@ -73,7 +73,7 @@ def find_constructs(path, language: str) -> list[Construct]:
     return sorted(set(out), key=lambda c: (c.start, c.end, c.kind))
 
 
-def enclosing(span: Span, constructs: list[Construct], language: str) -> Span:
+def _enclosing_construct(span: Span, constructs: list[Construct], language: str) -> Span | None:
     _check_language(language)
     for kind in ENCLOSING_ORDER[language]:
         containing = [
@@ -83,7 +83,12 @@ def enclosing(span: Span, constructs: list[Construct], language: str) -> Span:
         if containing:
             best = min(containing, key=lambda c: c.end - c.start)
             return Span(best.start, best.end)
-    return Span(span.start, span.end)
+    return None
+
+
+def enclosing(span: Span, constructs: list[Construct], language: str) -> Span:
+    found = _enclosing_construct(span, constructs, language)
+    return found if found is not None else Span(span.start, span.end)
 
 
 def parse_diff_u0(text: str) -> list[Hunk]:
@@ -135,26 +140,44 @@ def _merge(spans: list[Span]) -> list[Span]:
     return out
 
 
-def _with_context(cores: list[Span], n_lines: int, context: int) -> list[Span]:
-    return _merge(
-        [Span(max(1, c.start - context), min(n_lines, c.end + context)) for c in cores]
-    )
+def _bare_context(core: Span, constructs: list[Construct], n_lines: int, context: int) -> Span:
+    """Extend a bare range by context lines, stopping short of any construct the
+    context would only partly include (a partial construct breaks parsing)."""
+    start = max(1, core.start - context)
+    end = min(n_lines, core.end + context)
+    changed = True
+    while changed:
+        changed = False
+        for c in constructs:
+            if c.start < start <= c.end < core.start:
+                start, changed = c.end + 1, True
+            if core.end < c.start <= end < c.end:
+                end, changed = c.start - 1, True
+    return Span(start, end)
+
+
+def _piece(span: Span, constructs, language, n_lines, context) -> tuple[Span, Span]:
+    """(core, window piece): an enclosing construct is its own window, a bare range gets context."""
+    found = _enclosing_construct(span, constructs, language)
+    if found is not None:
+        return found, found
+    core = Span(span.start, span.end)
+    return core, _bare_context(core, constructs, n_lines, context)
 
 
 def vuln_segments(targets, constructs, language, n_lines, context=3):
     """Return (segments, cores); cores are the merged enclosing ranges before context."""
-    cores = _merge([enclosing(t, constructs, language) for t in targets])
-    return _with_context(cores, n_lines, context), cores
+    pieces = [_piece(t, constructs, language, n_lines, context) for t in targets]
+    return _merge([w for _, w in pieces]), _merge([c for c, _ in pieces])
 
 
 def fixed_segments(vuln_cores, hunks, fixed_constructs, language, n_lines, context=3):
-    cores = []
-    for core in vuln_cores:
-        mapped = Span(map_old_to_new(core.start, hunks), map_old_to_new(core.end, hunks))
-        cores.append(enclosing(mapped, fixed_constructs, language))
-    for run in added_runs_new(hunks):
-        cores.append(enclosing(run, fixed_constructs, language))
-    return _with_context(_merge(cores), n_lines, context)
+    spans = [
+        Span(map_old_to_new(core.start, hunks), map_old_to_new(core.end, hunks))
+        for core in vuln_cores
+    ]
+    spans += added_runs_new(hunks)
+    return _merge([_piece(s, fixed_constructs, language, n_lines, context)[1] for s in spans])
 
 
 def _gap(prev: Span, seg: Span) -> Span | None:

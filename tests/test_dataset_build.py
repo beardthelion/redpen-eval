@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import shutil
 from pathlib import Path
@@ -38,8 +40,8 @@ def line_of(src, needle):
 
 # ------------------------------------------------------------ fixture sources
 
-GO_UPLOAD_BODY = "".join(f'\t_ = r.Header.Get("X-H{i}")\n' for i in range(15))
-GO_UPLOAD_TAIL = "".join(f'\t_ = r.Header.Get("X-T{i}")\n' for i in range(14))
+GO_UPLOAD_BODY = "".join(f'\t_ = r.Header.Get("X-H{i}")\n' for i in range(18))
+GO_UPLOAD_TAIL = "".join(f'\t_ = r.Header.Get("X-T{i}")\n' for i in range(17))
 GO_VULN = (
     "// Copyright 2024 Acme Widget Authors\n"
     "package handler\n"
@@ -50,8 +52,12 @@ GO_VULN = (
     '\t"net/http"\n'
     ")\n"
     "\n"
-    "var limitA = 1\n"
-    "var limitB = 2\n"
+    "func allowed(s string) bool {\n"
+    "\tif s == \"\" {\n"
+    "\t\treturn true\n"
+    "\t}\n"
+    "\treturn false\n"
+    "}\n"
     "\n"
     "func Upload(w http.ResponseWriter, r *http.Request) {\n"
     "\tvar buf bytes.Buffer\n"
@@ -236,9 +242,11 @@ def happy(tmp_path_factory):
               spdx="AGPL-3.0-only", ecosystem="pip")
         sweep = w.sweep()
         out = tmp / "dataset" / "v1"
-        rc = build(sweep, out, tmp / "cache")
-    assert rc == 0
-    return {"out": out, "sweep": sweep}
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = build(sweep, out, tmp / "cache")
+    assert rc == 0, buf.getvalue()
+    return {"out": out, "sweep": sweep, "stdout": buf.getvalue()}
 
 
 def case_json(out, cid):
@@ -258,7 +266,8 @@ def test_go_happy_path(happy):
     assert c["window_mode"] == "trimmed"
     start = line_of(GO_VULN, "func Upload")
     end = line_of(GO_VULN, "w.Write(buf.Bytes())") + 1
-    assert c["vuln"]["segments"] == [{"start": start - 3, "end": end + 3}]
+    assert c["vuln"]["segments"] == [{"start": start, "end": end}]
+    assert "return false" not in window(out, GO_ID, "vuln")
     filler = line_of(GO_VULN, "func filler")
     assert all(s["end"] < filler for s in c["vuln"]["segments"])
     sink = line_of(GO_VULN, "io.Copy(&buf, r.Body)")
@@ -290,7 +299,7 @@ def test_python_happy_path_indented_method(happy):
     c = case_json(happy["out"], PY_ID)
     assert c["window_mode"] == "trimmed"
     start = line_of(PY_VULN, "def load")
-    assert c["vuln"]["segments"] == [{"start": start - 3, "end": c["vuln"]["original_line_count"]}]
+    assert c["vuln"]["segments"] == [{"start": start, "end": c["vuln"]["original_line_count"]}]
     text = window(out, PY_ID, "vuln")
     assert "class Loader" not in text
     assert "    def load(self, x):\n" in text
@@ -302,9 +311,9 @@ def test_typescript_happy_path_window_is_class(happy):
     assert c["window_mode"] == "trimmed"
     cls = line_of(TS_VULN, "export class Extractor")
     cls_end = 15
-    assert c["vuln"]["segments"] == [{"start": 1, "end": cls_end + 3}]
+    assert c["vuln"]["segments"] == [{"start": cls, "end": cls_end}]
     fcls_end = line_of(TS_FIXED, "export class") + 15
-    assert c["fixed"]["segments"] == [{"start": 1, "end": fcls_end + 3}]
+    assert c["fixed"]["segments"] == [{"start": cls, "end": fcls_end}]
     assert "unrelated" not in window(out, TS_ID, "vuln")
     assert "constructor(root" in window(out, TS_ID, "vuln")
     assert cls == 3
@@ -314,7 +323,7 @@ def test_javascript_happy_path_window_is_function(happy):
     out = happy["out"]
     c = case_json(out, JS_ID)
     assert c["window_mode"] == "trimmed"
-    assert c["vuln"]["segments"] == [{"start": 1, "end": 6 + 3}]
+    assert c["vuln"]["segments"] == [{"start": 2, "end": 6}]
     assert "function far" not in window(out, JS_ID, "vuln")
 
 
@@ -325,6 +334,17 @@ def test_whole_file_fallback(happy):
     n_f = len(PICKLE_FIXED.splitlines())
     assert c["vuln"]["segments"] == [{"start": 1, "end": n_v}]
     assert c["fixed"]["segments"] == [{"start": 1, "end": n_f}]
+    (line,) = [l for l in happy["stdout"].splitlines() if l.startswith(f"ok   {PK_ID} ")]
+    assert line == (f"ok   {PK_ID} window=whole_file vuln_lines={n_v} fixed_lines={n_f} "
+                    'fallback="vuln side: rule does not fire"')
+
+
+def test_must_not_trimmed_case_prints_no_fallback(happy):
+    lines = [l for l in happy["stdout"].splitlines() if l.startswith("ok   ")]
+    assert len(lines) == 5
+    for cid in (GO_ID, PY_ID, TS_ID, JS_ID):
+        (line,) = [l for l in lines if l.startswith(f"ok   {cid} ")]
+        assert " window=trimmed " in line and "fallback=" not in line
 
 
 def test_manifest_lists_cases_sorted(happy):

@@ -285,9 +285,11 @@ def build_case(cc: sources.CorpusCase, staging: Path, cache_dir: Path, build_dat
         return rv, rf, probs
 
     window_mode = "trimmed"
+    fallback = None
     win_v, win_f, probs = write_and_check(seg_v, seg_f)
     if probs:
         window_mode = "whole_file"
+        fallback = "; ".join(probs)
         seg_v = [Span(1, len(vuln_lines))]
         seg_f = [Span(1, len(fixed_lines))]
         win_v, win_f, probs = write_and_check(seg_v, seg_f)
@@ -358,6 +360,7 @@ def build_case(cc: sources.CorpusCase, staging: Path, cache_dir: Path, build_dat
         "case_sha256": case_sha256(case_dir, case),
         "_vuln_lines": sum(s.end - s.start + 1 for s in seg_v),
         "_fixed_lines": sum(s.end - s.start + 1 for s in seg_f),
+        "_fallback": fallback,
     }
 
 
@@ -406,9 +409,13 @@ def build_dataset(sweep_dir, out, cache_dir, force: bool = False, log=print) -> 
                 log(f"FAIL {cc.ghsa}: {e}")
                 continue
             vl, fl = entry.pop("_vuln_lines"), entry.pop("_fixed_lines")
+            fallback = entry.pop("_fallback")
             entries.append(entry)
             report.built.append(cc.ghsa)
-            log(f"ok   {cc.ghsa} window={entry['window_mode']} vuln_lines={vl} fixed_lines={fl}")
+            line = f"ok   {cc.ghsa} window={entry['window_mode']} vuln_lines={vl} fixed_lines={fl}"
+            if fallback is not None:
+                line += f" fallback={json.dumps(fallback, ensure_ascii=False)}"
+            log(line)
         if report.failures:
             shutil.rmtree(staging)
             return report

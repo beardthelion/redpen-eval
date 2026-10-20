@@ -264,7 +264,7 @@ def test_vuln_segments_two_distant_functions():
     cs = [Construct("go-func", 10, 20), Construct("go-func", 120, 130)]
     segs, cores = vuln_segments([Span(15, 15), Span(125, 126)], cs, "go", 200)
     assert cores == [Span(10, 20), Span(120, 130)]
-    assert segs == [Span(7, 23), Span(117, 133)]
+    assert segs == [Span(10, 20), Span(120, 130)]
 
 
 def test_vuln_segments_close_targets_merge():
@@ -294,14 +294,184 @@ def test_fixed_segments_maps_cores_and_adds_new_helper():
     hunks = [Hunk(15, 1, 15, 2), Hunk(40, 0, 42, 6)]
     fixed_cs = [Construct("go-func", 10, 21), Construct("go-func", 42, 47)]
     segs = fixed_segments([Span(10, 20)], hunks, fixed_cs, "go", 100)
-    assert segs == [Span(7, 24), Span(39, 50)]
+    assert segs == [Span(10, 21), Span(42, 47)]
 
 
 def test_must_not_fixed_segments_without_added_runs_has_no_extra_segment():
     hunks = [Hunk(15, 1, 15, 0)]
     fixed_cs = [Construct("go-func", 10, 19), Construct("go-func", 42, 47)]
     segs = fixed_segments([Span(10, 20)], hunks, fixed_cs, "go", 100)
-    assert segs == [Span(7, 22)]
+    assert segs == [Span(10, 19)]
+
+
+# ------------------------------------------- construct targets get no context
+
+GO_PREV_SRC = """\
+package main
+
+func isAllowed(s string) bool {
+	if s == "" {
+		return true
+	}
+	return false
+}
+
+func (h *ValidationHandler) Handle(s string) error {
+	x := s // target
+	_ = x
+	return nil
+}
+"""
+
+GO_FUNC_RULE = """\
+rules:
+  - id: any-func
+    languages: [go]
+    severity: WARNING
+    message: r
+    pattern: |
+      func ($R $T) $F(...) $RET { ... }
+"""
+
+TS_PREV_SRC = """\
+import { a } from "./a";
+
+function helper(x: number) {
+  if (x > 1) {
+    return x;
+  }
+  return 0;
+}
+function target(y: string) {
+  const z = y; // target
+  return z;
+}
+"""
+
+TS_FUNC_RULE = """\
+rules:
+  - id: any-func
+    languages: [typescript]
+    severity: WARNING
+    message: r
+    pattern: |
+      function $F(...) { ... }
+"""
+
+
+def _window_parses(tmp_path, src, segs, language, name, rule_text, header):
+    text = build_window_text(split_lines(src), segs, language, header)
+    target = tmp_path / name
+    target.write_text(text)
+    rule = tmp_path / "rule.yaml"
+    rule.write_text(rule_text)
+    return run_semgrep(rule, target)
+
+
+def test_go_construct_target_gets_no_context_and_window_parses(tmp_path):
+    p = tmp_path / "src.go"
+    p.write_text(GO_PREV_SRC)
+    n = len(split_lines(GO_PREV_SRC))
+    t = line_of(GO_PREV_SRC, "// target")
+    func = line_of(GO_PREV_SRC, "func (h *ValidationHandler)")
+    end = line_of(GO_PREV_SRC, "return nil") + 1
+    segs, cores = vuln_segments([Span(t, t)], find_constructs(p, "go"), "go", n)
+    assert cores == [Span(func, end)]
+    assert segs == [Span(func, end)]
+    run = _window_parses(tmp_path, GO_PREV_SRC, segs, "go", "win.go", GO_FUNC_RULE, ["// h"])
+    assert run.errors == []
+    assert run.fires is True
+
+
+def test_ts_construct_target_gets_no_context_and_window_parses(tmp_path):
+    p = tmp_path / "src.ts"
+    p.write_text(TS_PREV_SRC)
+    n = len(split_lines(TS_PREV_SRC))
+    t = line_of(TS_PREV_SRC, "// target")
+    func = line_of(TS_PREV_SRC, "function target")
+    end = line_of(TS_PREV_SRC, "return z") + 1
+    segs, _ = vuln_segments([Span(t, t)], find_constructs(p, "typescript"), "typescript", n)
+    assert segs == [Span(func, end)]
+    run = _window_parses(tmp_path, TS_PREV_SRC, segs, "typescript", "win.ts", TS_FUNC_RULE, ["// h"])
+    assert run.errors == []
+    assert run.fires is True
+
+
+GO_BARE_SRC = """\
+package main
+
+var a = 1
+var b = 2
+var c = 3
+var target = 4
+var d = 5
+var e = 6
+var f = 7
+var g = 8
+"""
+
+
+def test_bare_range_target_still_gets_context(tmp_path):
+    p = tmp_path / "src.go"
+    p.write_text(GO_BARE_SRC)
+    n = len(split_lines(GO_BARE_SRC))
+    t = line_of(GO_BARE_SRC, "var target")
+    segs, cores = vuln_segments([Span(t, t)], find_constructs(p, "go"), "go", n)
+    assert cores == [Span(t, t)]
+    assert segs == [Span(t - 3, t + 3)]
+
+
+GO_BARE_NEAR_FUNC_SRC = """\
+package main
+
+func before() bool {
+	if true {
+		return true
+	}
+	return false
+}
+var target = 4
+func after() int {
+	if true {
+		return 1
+	}
+	return 0
+}
+"""
+
+GO_VAR_RULE = """\
+rules:
+  - id: target-var
+    languages: [go]
+    severity: WARNING
+    message: r
+    pattern: var target = 4
+"""
+
+
+def test_must_not_bare_range_context_cuts_into_a_construct(tmp_path):
+    p = tmp_path / "src.go"
+    p.write_text(GO_BARE_NEAR_FUNC_SRC)
+    n = len(split_lines(GO_BARE_NEAR_FUNC_SRC))
+    t = line_of(GO_BARE_NEAR_FUNC_SRC, "var target")
+    segs, _ = vuln_segments([Span(t, t)], find_constructs(p, "go"), "go", n)
+    assert segs == [Span(t, t)]
+    run = _window_parses(tmp_path, GO_BARE_NEAR_FUNC_SRC, segs, "go", "win.go", GO_VAR_RULE, ["// h"])
+    assert run.errors == []
+    assert run.fires is True
+
+
+def test_bare_range_context_keeps_whole_constructs():
+    # a construct lying entirely inside the context stays; a partial one is cut off
+    cs = [Construct("go-func", 1, 6), Construct("go-func", 8, 9), Construct("go-func", 13, 20)]
+    segs, _ = vuln_segments([Span(11, 11)], cs, "go", 30)
+    assert segs == [Span(8, 12)]
+
+
+def test_fixed_segments_bare_mapped_core_gets_context():
+    hunks = [Hunk(15, 1, 15, 1)]
+    segs = fixed_segments([Span(15, 15)], hunks, [], "go", 100)
+    assert segs == [Span(12, 18)]
 
 
 # ---------------------------------------------------------------- window text
