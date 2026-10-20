@@ -17,6 +17,7 @@ reviewers:
     timeout_s: 900
     max_retries: 2
     retry_backoff_s: 1.0
+    stream: true        # aimlapi's proxy drops long silent responses
   reviewer-b:
     adapter: openai_compat
     base_url: https://api.aimlapi.com/v1
@@ -29,6 +30,7 @@ reviewers:
     timeout_s: 900
     max_retries: 2
     retry_backoff_s: 1.0
+    stream: true        # aimlapi's proxy drops long silent responses
 judges:
   mock:
     adapter: mock

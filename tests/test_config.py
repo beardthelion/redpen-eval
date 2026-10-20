@@ -100,10 +100,16 @@ def test_must_not_openai_compat_missing_required(tmp_path, key):
     ("    fixed: clean\n", "    fixed: hit\n", "fixed"),
     ("default_judge: mock\n", "default_judge: nobody\n", "nobody"),
     ("    structured_output: json_schema\n", "    structured_output: xml\n", "structured_output"),
+    ("    max_tokens: 2048\n", "    max_tokens: 2048\n    stream: yes please\n", "stream"),
 ])
 def test_must_not_invalid_values(tmp_path, old, new, match):
     with pytest.raises(ConfigError, match=match):
         load_config(write(tmp_path, VALID.replace(old, new, 1)))
+
+
+def test_stream_flag_loads(tmp_path):
+    cfg = load_config(write(tmp_path, VALID.replace("    max_tokens: 2048\n", "    max_tokens: 2048\n    stream: true\n", 1)))
+    assert cfg.reviewers["real"]["stream"] is True
 
 
 def test_must_not_missing_file(tmp_path):

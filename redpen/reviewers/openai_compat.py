@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from dataclasses import dataclass, field
@@ -26,9 +27,13 @@ def _error(kind: str, message: str, key: str, status: int | None = None) -> Revi
     return ReviewerError(kind, message.replace(key, "<redacted>"), status=status)
 
 
-def _snippet(resp: httpx.Response, key: str) -> str:
+def _clip(text: str, key: str) -> str:
     # Redact before truncating, so a cut through an echoed key cannot leave a prefix.
-    return resp.text.replace(key, "<redacted>")[:BODY_SNIPPET]
+    return text.replace(key, "<redacted>")[:BODY_SNIPPET]
+
+
+def _snippet(resp: httpx.Response, key: str) -> str:
+    return _clip(resp.text, key)
 
 
 def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | None = None,
@@ -44,8 +49,14 @@ def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | 
         body[cfg.get("max_tokens_param", "max_tokens")] = cfg["max_tokens"]
     if cfg.get("seed") is not None:
         body["seed"] = cfg["seed"]
+    stream = cfg.get("stream", False)
     if response_format is not None:
         body["response_format"] = response_format
+    if stream:
+        # A slow answer arrives as a trickle of chunks, so a proxy that closes
+        # long-idle responses never sees the connection go quiet.
+        body["stream"] = True
+        body["stream_options"] = {"include_usage": True}
     url = cfg["base_url"].rstrip("/") + "/chat/completions"
     max_retries = cfg.get("max_retries", 2)
     backoff = cfg.get("retry_backoff_s", 1.0)
@@ -55,30 +66,29 @@ def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | 
             last = attempt == max_retries
             started = time.monotonic()
             try:
-                resp = client.post(url, json=body, headers={"Authorization": f"Bearer {key}"})
+                with client.stream("POST", url, json=body,
+                                   headers={"Authorization": f"Bearer {key}"}) as resp:
+                    status = resp.status_code
+                    if status == 200:
+                        parsed = _read_stream(resp, key) if stream else _read_json(resp, key)
+                        latency = time.monotonic() - started
+                        break
+                    resp.read()
             except httpx.TimeoutException as exc:
                 if last:
                     raise _error("timeout", f"request timed out: {exc}", key) from None
-            except httpx.HTTPError as exc:
-                raise _error("http_error", f"transport error: {exc}", key) from None
+            except httpx.TransportError as exc:
+                # Includes a peer that drops the connection mid-response.
+                if last:
+                    raise _error("http_error", f"transport error: {exc}", key) from None
             else:
-                status = resp.status_code
-                if status == 200:
-                    latency = time.monotonic() - started
-                    break
                 retryable = status in RETRY_STATUSES or status >= 500
                 if not retryable or last:
                     kind = "rate_limit" if status == 429 else "http_error"
                     raise _error(kind, f"HTTP {status}: {_snippet(resp, key)}", key, status)
             time.sleep(backoff * 2 ** attempt)
 
-    try:
-        data = resp.json()
-        choice = data["choices"][0]
-        text = choice["message"].get("content")
-        finish = choice.get("finish_reason")
-    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-        raise _error("http_error", f"invalid response body: {_snippet(resp, key)}", key) from None
+    text, finish, data = parsed
     if finish == "content_filter":
         raise ReviewerError("refusal", "finish_reason content_filter")
     if text is None:
@@ -89,6 +99,49 @@ def chat_completion(cfg: dict, messages: list[dict], *, response_format: dict | 
             "finish_reason": finish, "usage": data.get("usage"), "latency_s": round(latency, 3),
             "truncated": finish == "length"}
     return ChatResult(text, meta)
+
+
+def _read_json(resp: httpx.Response, key: str) -> tuple:
+    """(content, finish_reason, response fields) from a non-streamed completion."""
+    resp.read()
+    try:
+        data = resp.json()
+        choice = data["choices"][0]
+        return choice["message"].get("content"), choice.get("finish_reason"), data
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+        raise _error("http_error", f"invalid response body: {_snippet(resp, key)}", key) from None
+
+
+def _read_stream(resp: httpx.Response, key: str) -> tuple:
+    """(content, finish_reason, response fields) assembled from server-sent events."""
+    parts, finish, fields, seen = [], None, {}, False
+    for line in resp.iter_lines():
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            chunk = json.loads(payload)
+        except ValueError:
+            raise _error("http_error", f"invalid stream chunk: {_clip(payload, key)}", key) from None
+        if not isinstance(chunk, dict) or "error" in chunk:
+            raise _error("http_error", f"stream error: {_clip(str(chunk), key)}", key)
+        for name in ("model", "system_fingerprint", "usage"):
+            if chunk.get(name) is not None:
+                fields[name] = chunk[name]
+        for choice in chunk.get("choices") or []:
+            seen = True
+            content = (choice.get("delta") or {}).get("content")
+            if content is not None:
+                if not isinstance(content, str):
+                    raise _error("http_error", "invalid response body: content is not a string", key)
+                parts.append(content)
+            if choice.get("finish_reason") is not None:
+                finish = choice["finish_reason"]
+    if not seen:
+        raise _error("http_error", "invalid response body: stream carried no choices", key)
+    return "".join(parts), finish, fields
 
 
 class OpenAICompatReviewer:

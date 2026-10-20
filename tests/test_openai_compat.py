@@ -489,3 +489,154 @@ def test_must_not_list_content_abort_full_run(tmp_path, monkeypatch, bad_side):
         else:
             assert rec[side]["status"] == "judge_error"
             assert "content is not a string" in rec[side]["judge"]["error"]
+
+
+# ------------------------------------------------------------ streaming and dropped connections
+
+def sse(*chunks, done=True):
+    lines = [f"data: {json.dumps(c)}\n\n" for c in chunks]
+    if done:
+        lines.append("data: [DONE]\n\n")
+    return "".join(lines).encode()
+
+
+def delta(content=None, finish_reason=None, **extra):
+    c = {"id": "x", "model": "served-model", "system_fingerprint": "fp_1",
+         "choices": [{"index": 0, "delta": {} if content is None else {"content": content},
+                      "finish_reason": finish_reason}]}
+    c.update(extra)
+    return c
+
+
+USAGE = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+
+
+def stream_ok(*parts, finish="stop"):
+    chunks = [delta(p) for p in parts] + [delta(finish_reason=finish),
+                                          {"id": "x", "model": "served-model", "choices": [],
+                                           "usage": USAGE}]
+    return lambda request: httpx.Response(
+        200, headers={"content-type": "text/event-stream"}, content=sse(*chunks))
+
+
+class Dropping(httpx.SyncByteStream):
+    """Yields part of a stream, then the peer closes the connection."""
+
+    def __init__(self, first: bytes):
+        self.first = first
+
+    def __iter__(self):
+        yield self.first
+        raise httpx.RemoteProtocolError("peer closed connection without sending complete message body")
+
+
+def dropped(request):
+    return httpx.Response(200, headers={"content-type": "text/event-stream"},
+                          stream=Dropping(sse(delta("half an ans"), done=False)))
+
+
+def test_stream_request_and_assembled_result(key):
+    srv = Server(stream_ok("looks ", "fine"))
+    res = chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert res.text == "looks fine"
+    assert res.meta["model"] == "served-model"
+    assert res.meta["system_fingerprint"] == "fp_1"
+    assert res.meta["finish_reason"] == "stop"
+    assert res.meta["usage"] == USAGE
+    assert res.meta["truncated"] is False
+    body = srv.bodies()[0]
+    assert body["stream"] is True
+    assert body["stream_options"] == {"include_usage": True}
+
+
+def test_must_not_stream_keys_sent_when_stream_unset(key):
+    srv = Server((200, completion()))
+    chat_completion(entry(), MSGS, transport=srv.transport)
+    assert "stream" not in srv.bodies()[0] and "stream_options" not in srv.bodies()[0]
+
+
+def test_stream_length_flags_truncated(key):
+    srv = Server(stream_ok("partial", finish="length"))
+    res = chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert res.text == "partial" and res.meta["truncated"] is True
+
+
+def test_stream_content_filter_is_refusal(key):
+    srv = Server(stream_ok(finish="content_filter"))
+    with pytest.raises(ReviewerError) as e:
+        chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert e.value.kind == "refusal"
+
+
+def test_stream_drop_mid_body_is_retried(key):
+    srv = Server(dropped, stream_ok("whole answer"))
+    res = chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert res.text == "whole answer"
+    assert len(srv.requests) == 2
+
+
+def test_must_not_stream_drop_exhausted_is_http_error(key):
+    srv = Server(dropped)
+    with pytest.raises(ReviewerError) as e:
+        chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert e.value.kind == "http_error"
+    assert "connection" in e.value.message
+    assert len(srv.requests) == 3
+
+
+def test_non_stream_drop_is_retried(key):
+    srv = Server(httpx.RemoteProtocolError("peer closed connection"), (200, completion("ok")))
+    assert chat_completion(entry(), MSGS, transport=srv.transport).text == "ok"
+    assert len(srv.requests) == 2
+
+
+def test_connect_error_is_retried_then_http_error(key):
+    srv = Server(httpx.ConnectError("refused"))
+    with pytest.raises(ReviewerError) as e:
+        chat_completion(entry(), MSGS, transport=srv.transport)
+    assert e.value.kind == "http_error"
+    assert len(srv.requests) == 3
+
+
+@pytest.mark.parametrize("chunk", [
+    {"error": {"message": f"upstream failed for {KEY}"}},
+    delta(content=["not", "a", "string"]),
+])
+def test_must_not_stream_error_or_bad_content_is_http_error(key, chunk):
+    srv = Server(lambda r: httpx.Response(200, headers={"content-type": "text/event-stream"},
+                                          content=sse(chunk)))
+    with pytest.raises(ReviewerError) as e:
+        chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert e.value.kind == "http_error"
+    assert KEY not in e.value.message
+    assert len(srv.requests) == 1
+
+
+@pytest.mark.parametrize("body", [b"data: {not json\n\n", b"", b"data: [DONE]\n\n"])
+def test_must_not_stream_garbage_or_empty_is_http_error(key, body):
+    srv = Server(lambda r: httpx.Response(200, headers={"content-type": "text/event-stream"},
+                                          content=body))
+    with pytest.raises(ReviewerError) as e:
+        chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert e.value.kind == "http_error"
+
+
+def test_stream_non_200_is_not_parsed_as_stream(key):
+    srv = Server((401, "bad key"))
+    with pytest.raises(ReviewerError) as e:
+        chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+    assert e.value.kind == "http_error" and e.value.status == 401
+    assert len(srv.requests) == 1
+
+
+@pytest.mark.parametrize("make_body", [
+    lambda pad: sse({"error": {"message": "x" * pad + KEY}}),
+    lambda pad: ("data: {" + "x" * pad + KEY + "\n\n").encode(),
+])
+def test_must_not_stream_error_leaks_key_prefix_at_truncation(key, make_body):
+    for pad in range(470, 500):
+        srv = Server(lambda r: httpx.Response(200, headers={"content-type": "text/event-stream"},
+                                              content=make_body(pad)))
+        with pytest.raises(ReviewerError) as e:
+            chat_completion(entry(stream=True), MSGS, transport=srv.transport)
+        assert KEY[:6] not in e.value.message, pad

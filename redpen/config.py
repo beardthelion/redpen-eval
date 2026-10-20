@@ -10,7 +10,7 @@ import yaml
 CHANGE_ME = "CHANGE-ME"
 
 OPENAI_KEYS = {"adapter", "base_url", "model", "api_key_env", "temperature", "max_tokens",
-               "max_tokens_param", "seed", "timeout_s", "max_retries", "retry_backoff_s"}
+               "max_tokens_param", "seed", "timeout_s", "max_retries", "retry_backoff_s", "stream"}
 OPENAI_REQUIRED = ("base_url", "model", "api_key_env")
 MOCK_REVIEWER_KEYS = {"adapter", "vuln", "fixed", "overrides"}
 MOCK_JUDGE_KEYS = {"adapter", "malformed_cases", "repair_cases"}
@@ -63,6 +63,8 @@ def _check_openai(entry: dict, allowed: set, where: str) -> None:
         _check_mode(entry["max_tokens_param"], MAX_TOKENS_PARAMS, f"{where}.max_tokens_param")
     if "structured_output" in entry:
         _check_mode(entry["structured_output"], STRUCTURED_OUTPUT, f"{where}.structured_output")
+    if "stream" in entry and not isinstance(entry["stream"], bool):
+        raise ConfigError(f"{where}.stream: must be true or false")
 
 
 def _check_reviewer(name: str, entry: dict) -> None:
