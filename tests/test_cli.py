@@ -1,5 +1,3 @@
-import pytest
-
 from redpen.cli import main
 
 
@@ -25,9 +23,3 @@ def test_no_subcommand_prints_help_and_returns_2(capsys):
     assert run([]) == 2
     captured = capsys.readouterr()
     assert "build-dataset" in captured.out + captured.err
-
-
-@pytest.mark.parametrize("command", ["report"])
-def test_stub_commands_return_2(command, capsys):
-    assert run([command]) == 2
-    assert f"redpen: {command} is not implemented yet" in capsys.readouterr().err

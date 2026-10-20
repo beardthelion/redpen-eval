@@ -8,14 +8,6 @@ import sys
 from pathlib import Path
 
 
-def _not_implemented(command: str):
-    def handler(args: argparse.Namespace) -> int:
-        print(f"redpen: {command} is not implemented yet", file=sys.stderr)
-        return 2
-
-    return handler
-
-
 def _build_dataset(args: argparse.Namespace) -> int:
     from redpen.dataset import build_dataset
 
@@ -35,6 +27,12 @@ def _run(args: argparse.Namespace) -> int:
 
     return run(args.reviewer, args.judge, args.cases, args.dataset, args.config,
                args.results_dir, concurrency=args.concurrency, resume=args.resume)
+
+
+def _report(args: argparse.Namespace) -> int:
+    from redpen.report import report
+
+    return report(args.results_dir, args.dataset, args.runs, args.markdown)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -65,7 +63,11 @@ def build_parser() -> argparse.ArgumentParser:
     rn.add_argument("--resume", metavar="RUN_ID")
     rn.set_defaults(handler=_run)
     rp = sub.add_parser("report", help="render the leaderboard from completed runs")
-    rp.set_defaults(handler=_not_implemented("report"))
+    rp.add_argument("--results-dir", default="results")
+    rp.add_argument("--dataset", default="dataset/v1")
+    rp.add_argument("--runs", metavar="ID[,ID...]")
+    rp.add_argument("--markdown", metavar="PATH")
+    rp.set_defaults(handler=_report)
     return parser
 
 
