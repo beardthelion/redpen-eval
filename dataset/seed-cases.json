@@ -1,0 +1,434 @@
+[
+ {
+  "case_id": "GHSA-23vg-4cjm-66q5",
+  "ecosystem": "go",
+  "cve": "CVE-2026-100351",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "vuln_ref": "435c5db68d177dc136c98849a3783bf79087b27e",
+  "fixed_ref": "eda80e2676e9f577ceed2dd80e64f16083edb041",
+  "sink_file": "openapi3filter/validation_handler.go"
+ },
+ {
+  "case_id": "GHSA-24cc-9352-h2pg",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-104266",
+  "repo_url": "https://github.com/tinytag/tinytag",
+  "vuln_ref": "39e5d0e5463abac597b3292feb9c2e409eee1e34",
+  "fixed_ref": "9ada221ba44990cb02cd9002d992186e037b515e",
+  "sink_file": "tinytag/tinytag.py"
+ },
+ {
+  "case_id": "GHSA-254f-3936-288h",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "e62e2e96984d0e239ea8ef10c25010a0acfe5d9a",
+  "fixed_ref": "94cb11c44ff7345414da17ebfea1598a529ad9cd",
+  "sink_file": "src/PIL/PdfParser.py"
+ },
+ {
+  "case_id": "GHSA-2658-85cv-9wwq",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-111059",
+  "repo_url": "https://github.com/mljar/mercury",
+  "vuln_ref": "ed44e655ab672633dfa3b10799c1beb5dcdea7d8",
+  "fixed_ref": "c798a85924e6614c6fea7afe5a560e4554a1d09b",
+  "sink_file": "mercury/chat/message.py"
+ },
+ {
+  "case_id": "GHSA-27h8-gf7j-v5hc",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "13943c8f857b22f073d30f0ef9b725a0d255f1a4",
+  "fixed_ref": "443e3130a8c11594fd0e296afad497e11e678961",
+  "sink_file": "src/libImaging/Filter.c"
+ },
+ {
+  "case_id": "GHSA-2cvf-wqm6-wr9g",
+  "ecosystem": "go",
+  "cve": "CVE-2026-94603",
+  "repo_url": "https://github.com/podman-container-tools/podman",
+  "vuln_ref": "7728ba0a90094408ad9078e36c3622a651d49616",
+  "fixed_ref": "24706290d5c974f078d8ca284026802515f28e92",
+  "sink_file": "pkg/specgen/generate/container_create.go"
+ },
+ {
+  "case_id": "GHSA-2g87-pp6c-29x5",
+  "ecosystem": "pip",
+  "cve": "none",
+  "repo_url": "https://github.com/aio-libs/aiohttp",
+  "vuln_ref": "004b43f519a9786c79496bb741c7626cd63b31a9",
+  "fixed_ref": "09bcaa73ff084a0c539bbf16a0a78743acb7141f",
+  "sink_file": "aiohttp/_websocket/reader_py.py"
+ },
+ {
+  "case_id": "GHSA-332p-7hrc-92wf",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "392ee6f0d19a4adb766a63e9a99f3c28193b8d31",
+  "fixed_ref": "11582e5ffbdceb973d5ee593f3105af5a9852b40",
+  "sink_file": "src/libImaging/TiffDecode.c"
+ },
+ {
+  "case_id": "GHSA-462x-pgg6-55fp",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-112395",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "53d7c45cda3231f4f3a79ee9c517c73614b43924",
+  "fixed_ref": "76869efdbbf2ad7dccd7536520fb61b7a00ab61e",
+  "sink_file": "src/libImaging/TiffDecode.c"
+ },
+ {
+  "case_id": "GHSA-46jr-4wx8-v453",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-111768",
+  "repo_url": "https://github.com/modelcontextprotocol/typescript-sdk",
+  "vuln_ref": "2fc49eaf17a6b9ac0810c875cc96d3b949f9522c",
+  "fixed_ref": "6d8dbc6cb590edf766fcb66b636ca6b654e99c37",
+  "sink_file": "packages/server/src/server/mcp.ts"
+ },
+ {
+  "case_id": "GHSA-47c3-hpmg-7j6p",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-108258",
+  "repo_url": "https://github.com/posit-dev/py-shiny",
+  "vuln_ref": "48b4faa0d651476afa84d6423d57503b60716902",
+  "fixed_ref": "1d8ecb46cbc9621b7dc8812111d26692e086b376",
+  "sink_file": "shiny/bookmark/_bookmark_state.py"
+ },
+ {
+  "case_id": "GHSA-58r4-6rv3-gfh8",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-112397",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "5dcb630b9798efd91929cb873d677aeee6ed0bb3",
+  "fixed_ref": "18f7c0dfee93063c51db6ed0ca8c4da2999dcb64",
+  "sink_file": "src/_imagingmorph.c"
+ },
+ {
+  "case_id": "GHSA-5xm2-6676-qcp9",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "80de4be9e38d3a6148dd4d8491eb80cd12b760a4",
+  "fixed_ref": "f1acfc54c53502948d0d14121872061df931db48",
+  "sink_file": "src/PIL/DcxImagePlugin.py"
+ },
+ {
+  "case_id": "GHSA-637c-6jxx-4rwm",
+  "ecosystem": "go",
+  "cve": "CVE-2026-77524",
+  "repo_url": "https://github.com/kedacore/keda",
+  "vuln_ref": "2963aa3d3ba073a01f56865a557563ba40a2174c",
+  "fixed_ref": "1e21cc798dedd079e696cdb45388eddc5e18365d",
+  "sink_file": "pkg/scaling/resolver/hashicorpvault_handler.go"
+ },
+ {
+  "case_id": "GHSA-685w-q87j-wqw3",
+  "ecosystem": "go",
+  "cve": "CVE-2026-85747",
+  "repo_url": "https://github.com/distribution/distribution",
+  "vuln_ref": "39d5bf77773818e2e38e0bd87f8ff75d4be740f1",
+  "fixed_ref": "8f91c26c8888a95a36c2357a6e30bc15d4dd76d3",
+  "sink_file": "internal/client/repository.go"
+ },
+ {
+  "case_id": "GHSA-6cjc-53gc-5rqm",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-111065",
+  "repo_url": "https://github.com/aio-libs/aiohttp",
+  "vuln_ref": "6a07c171ef9f3be583e2907dcd1931372efca8d6",
+  "fixed_ref": "9dd8eaf4e31f1237ef2c1574a8c82a739fca5805",
+  "sink_file": "aiohttp/cookiejar.py"
+ },
+ {
+  "case_id": "GHSA-74vm-87hj-r66f",
+  "ecosystem": "go",
+  "cve": "CVE-2026-100349",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "vuln_ref": "d090e36b2f1c42c898ba2a687a8f6e25f5ca727f",
+  "fixed_ref": "f5441d67f855ed34d975b3b85665764644ab1459",
+  "sink_file": "openapi3filter/req_resp_decoder.go"
+ },
+ {
+  "case_id": "GHSA-8g5g-8vmr-9782",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-112403",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "0a24867365dead949aa5ff0905a40f2c233a4bc8",
+  "fixed_ref": "242a059aedc1935097d9aa1dc3f099750467ba75",
+  "sink_file": "src/libImaging/JpegDecode.c"
+ },
+ {
+  "case_id": "GHSA-953h-535j-jg2v",
+  "ecosystem": "go",
+  "cve": "none",
+  "repo_url": "https://github.com/theagentrouter/agent-router",
+  "vuln_ref": "780fcf46b2a39a42b2c4cf67c987b318a86b77b6",
+  "fixed_ref": "0d1e73037076d72251342d0ea578a36ffb7002c7",
+  "sink_file": "internal/mcpproxy/legacy.go"
+ },
+ {
+  "case_id": "GHSA-c42q-qvc3-j6vg",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-108260",
+  "repo_url": "https://github.com/tinacms/tinacms",
+  "vuln_ref": "60db64bf3e80550fcaf6f9c4ec79c19191c1702c",
+  "fixed_ref": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+  "sink_file": "packages/@tinacms/web-components/src/tina-markdown.js"
+ },
+ {
+  "case_id": "GHSA-cp9v-662q-vvx9",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "0e08e8b8ca01074e2e3c86ba1322327c8cf1b57d",
+  "fixed_ref": "b6ee66e8b2c2c0932bdf65f963268d9f2927ef86",
+  "sink_file": "src/libImaging/Bands.c"
+ },
+ {
+  "case_id": "GHSA-cv23-7vc5-jfh7",
+  "ecosystem": "go",
+  "cve": "CVE-2026-102941",
+  "repo_url": "https://github.com/gomarkdown/markdown",
+  "vuln_ref": "e08cff860f76ff942dae8866ad88e4a3eca5ce8a",
+  "fixed_ref": "61af6e1e69710c5ca13cfbaaaa1bc11bc763a8a9",
+  "sink_file": "parser/parser.go"
+ },
+ {
+  "case_id": "GHSA-f2g6-542v-9j58",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "02561b8dc6117d5670d4b469fecdd02c70854f9b",
+  "fixed_ref": "b3ebf20c694f2f12537a629c30229a1d5a53f777",
+  "sink_file": "src/PIL/PdfParser.py"
+ },
+ {
+  "case_id": "GHSA-f8c7-rwf9-fmgm",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-111057",
+  "repo_url": "https://github.com/mljar/mercury",
+  "vuln_ref": "4dc524304a56af25e5878e081d1bfd485851e88f",
+  "fixed_ref": "8c467129037ee9df269d543ac217ffd33b97bf3f",
+  "sink_file": "mercury_app/block_handler.py"
+ },
+ {
+  "case_id": "GHSA-f9xw-jh8m-3mwq",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-111748",
+  "repo_url": "https://github.com/aio-libs/aiohttp",
+  "vuln_ref": "f24e547664d08386726e75362b781a4a62bab067",
+  "fixed_ref": "6d4e7b01f9b951aa084a75d7356e907d4ee80411",
+  "sink_file": "aiohttp/web_request.py"
+ },
+ {
+  "case_id": "GHSA-fmxq-cgp8-87wp",
+  "ecosystem": "go",
+  "cve": "CVE-2026-77459",
+  "repo_url": "https://github.com/argoproj/argo-cd",
+  "vuln_ref": "3abe9eb1d7a1fc62b07231c1de811cd59fa10579",
+  "fixed_ref": "1149cdc6e932208c4402183cc3d7b7485239940c",
+  "sink_file": "controller/hook.go"
+ },
+ {
+  "case_id": "GHSA-g8cf-rcjf-c8cf",
+  "ecosystem": "go",
+  "cve": "CVE-2026-100354",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "vuln_ref": "4487f198ab8be0c37d6ca72c54f5dca4dc25270e",
+  "fixed_ref": "9245cef66c840e27a08409a8a5cd0ee930c5bcff",
+  "sink_file": "openapi3filter/req_resp_decoder.go"
+ },
+ {
+  "case_id": "GHSA-gg2r-wvfm-q9rx",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "175997a2198be26c5479a6ec5791e14020fdc30d",
+  "fixed_ref": "5dcb630b9798efd91929cb873d677aeee6ed0bb3",
+  "sink_file": "src/PIL/MspImagePlugin.py"
+ },
+ {
+  "case_id": "GHSA-h4mw-j7qp-8mwm",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-96620",
+  "repo_url": "https://github.com/anthropics/claude-agent-sdk-python",
+  "vuln_ref": "af69c0125eb48978631c671d877d0a3c246d210d",
+  "fixed_ref": "347a1cb88d7652199399db1b7f914e0a459a6662",
+  "sink_file": "src/claude_agent_sdk/_internal/transport/subprocess_cli.py"
+ },
+ {
+  "case_id": "GHSA-j3hg-9rp3-5hw9",
+  "ecosystem": "go",
+  "cve": "CVE-2026-107805",
+  "repo_url": "https://github.com/0xJacky/nginx-ui",
+  "vuln_ref": "1218a417ae9dfd3d053a7dce7d626ca9b8895361",
+  "fixed_ref": "8c9b9a1aff218ee6c980d047b750e49da3c46796",
+  "sink_file": "internal/nodeauth/body.go"
+ },
+ {
+  "case_id": "GHSA-p7v4-vr35-mj6f",
+  "ecosystem": "go",
+  "cve": "CVE-2026-95837",
+  "repo_url": "https://github.com/containerd/containerd",
+  "vuln_ref": "2cb32f0885e743db97713f7edac41c5065206557",
+  "fixed_ref": "928c03c6898cad95f795300281fdff0dbc55a32f",
+  "sink_file": "internal/cri/server/container_checkpoint_linux.go"
+ },
+ {
+  "case_id": "GHSA-pcc4-rvhr-2pr8",
+  "ecosystem": "pip",
+  "cve": "none",
+  "repo_url": "https://github.com/Graphify-Labs/graphify",
+  "vuln_ref": "c66eebe25f77975781920ed8b7c187054411f7a3",
+  "fixed_ref": "e1d9deed6a437f2c85458ef3c42519159f322b7b",
+  "sink_file": "graphify/extractors/fortran.py"
+ },
+ {
+  "case_id": "GHSA-pchr-8j38-3x4p",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-112896",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "8ee7830784e3bf71f5a660e237c367aa99f499ee",
+  "fixed_ref": "d03dc3c587a9b0bdc9e4304d70d59a635a87b742",
+  "sink_file": "src/PIL/TiffImagePlugin.py"
+ },
+ {
+  "case_id": "GHSA-pw5q-rjx4-7f7p",
+  "ecosystem": "go",
+  "cve": "CVE-2026-96627",
+  "repo_url": "https://github.com/getarcaneapp/arcane",
+  "vuln_ref": "97b9e9c83053ee9d78d23a4bf572defb19665721",
+  "fixed_ref": "21ea962f86d967dac8ae02a050f6e5f043d10fa1",
+  "sink_file": "backend/api/handlers/users.go"
+ },
+ {
+  "case_id": "GHSA-pwhx-cvv3-qj5c",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-108259",
+  "repo_url": "https://github.com/tinacms/tinacms",
+  "vuln_ref": "df351832c37fd0efaf5a06cb6cde9a5ec404201e",
+  "fixed_ref": "d030d414d39e15de79bf36e4c728d57205e71dde",
+  "sink_file": "packages/@tinacms/cli/src/next/codegen/index.ts"
+ },
+ {
+  "case_id": "GHSA-qfxx-c367-67f8",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-103975",
+  "repo_url": "https://github.com/appium/appium",
+  "vuln_ref": "b483d82b1348470e38d3160452e4d0166ae33840",
+  "fixed_ref": "d9eb36f413153e28b04b92d8ce4447da270371c0",
+  "sink_file": "packages/support/lib/zip.ts"
+ },
+ {
+  "case_id": "GHSA-qj98-gp63-54xj",
+  "ecosystem": "go",
+  "cve": "CVE-2026-102748",
+  "repo_url": "https://github.com/dgraph-io/dgraph",
+  "vuln_ref": "4caa27578667a8171e1bdfca4332fa7cb433065a",
+  "fixed_ref": "c32f6041387fa631dbc057e265b71aec3384ead1",
+  "sink_file": "dgraph/cmd/zero/run.go"
+ },
+ {
+  "case_id": "GHSA-qx66-fv34-fjm8",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-102989",
+  "repo_url": "https://github.com/TanStack/router",
+  "vuln_ref": "614bc27034c8ec98747bf305ed41d4a619640949",
+  "fixed_ref": "d521abd71c69f1ff010bb3def4d417cb5fa058cb",
+  "sink_file": "packages/start-server-core/src/server-functions-handler.ts"
+ },
+ {
+  "case_id": "GHSA-rfgq-q3w2-pmv2",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "cb294295d8eb6846ba788d9a1f10797d3c69b1cf",
+  "fixed_ref": "13943c8f857b22f073d30f0ef9b725a0d255f1a4",
+  "sink_file": "src/libImaging/Convert.c"
+ },
+ {
+  "case_id": "GHSA-v75v-6fpf-gvw8",
+  "ecosystem": "go",
+  "cve": "CVE-2026-104252",
+  "repo_url": "https://github.com/vitessio/vitess",
+  "vuln_ref": "2b93feb45f35b8612f502cb72169dc3f79d6d4c8",
+  "fixed_ref": "3140c1846cd120db34f33b2083139b4ab638aed2",
+  "sink_file": "go/vt/vttablet/tabletserver/twopcz.go"
+ },
+ {
+  "case_id": "GHSA-vrcc-3ch7-hppw",
+  "ecosystem": "go",
+  "cve": "CVE-2026-100353",
+  "repo_url": "https://github.com/getkin/kin-openapi",
+  "vuln_ref": "9245cef66c840e27a08409a8a5cd0ee930c5bcff",
+  "fixed_ref": "9814d1f2b212f3508bf52296aa9e248b2122a5a9",
+  "sink_file": "openapi3filter/req_resp_decoder.go"
+ },
+ {
+  "case_id": "GHSA-vx2m-gpq4-8j5q",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-108372",
+  "repo_url": "https://github.com/loopx-project/loopx",
+  "vuln_ref": "2e6c8e6709a0a918e91f414c5733829bc37a2c01",
+  "fixed_ref": "838720fba42bd22f71b5bb763ec406f7bdf4c940",
+  "sink_file": "loopx/status_server.py"
+ },
+ {
+  "case_id": "GHSA-vx6w-vv9f-6gvg",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-112899",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "61013142e0a6f913947cffad965dfe4e09f1b879",
+  "fixed_ref": "3e8cc105588d1dfe062fcada0b6058c1b5f14b65",
+  "sink_file": "src/PIL/EpsImagePlugin.py"
+ },
+ {
+  "case_id": "GHSA-w5f2-9q9c-ff4h",
+  "ecosystem": "pip",
+  "cve": "CVE-2026-105192",
+  "repo_url": "https://github.com/LMCache/LMCache",
+  "vuln_ref": "5070f183f260258611c1252e996ad12e2cee5b7f",
+  "fixed_ref": "160b6dec469edb765efd1fad42aca5a438b08bb5",
+  "sink_file": "lmcache/v1/platform/base/ipc_wrapper.py"
+ },
+ {
+  "case_id": "GHSA-x34j-47hf-4xg7",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-108261",
+  "repo_url": "https://github.com/tinacms/tinacms",
+  "vuln_ref": "5295e077f0d279c35686a0e481a15e33a4877e3b",
+  "fixed_ref": "b57dbf4b56201aef15cd92caa49fd12ab96bbecf",
+  "sink_file": "packages/@tinacms/app/src/lib/preview-origin.ts"
+ },
+ {
+  "case_id": "GHSA-x586-xvc8-g7q6",
+  "ecosystem": "npm",
+  "cve": "CVE-2026-84994",
+  "repo_url": "https://github.com/QwikDev/qwik",
+  "vuln_ref": "eb381ba48fcb76ab9f72d6fb5eab49504cb5d9a3",
+  "fixed_ref": "c1e7444402f9592b5cf9096e10bf303ab4640511",
+  "sink_file": "packages/qwik/src/core/container/serializers.ts"
+ },
+ {
+  "case_id": "GHSA-xv7q-fvmc-jx96",
+  "ecosystem": "go",
+  "cve": "CVE-2026-62367",
+  "repo_url": "https://github.com/go-vikunja/vikunja",
+  "vuln_ref": "be36c11e67d6a3a10643b17a0bcbc33d09de836a",
+  "fixed_ref": "7854f2729ab72000210b61c25929678fd6901630",
+  "sink_file": "pkg/modules/auth/openid/openid.go"
+ },
+ {
+  "case_id": "GHSA-xvh5-g6gv-559v",
+  "ecosystem": "pip",
+  "cve": "",
+  "repo_url": "https://github.com/python-pillow/Pillow",
+  "vuln_ref": "53318b50e8e9e85a57d033d4d879e1398d97aeb1",
+  "fixed_ref": "af56ace297b0991d02988fcc2ea933e4824b4fb3",
+  "sink_file": "src/encode.c"
+ }
+]
